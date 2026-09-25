@@ -784,7 +784,90 @@
       .dash-charts { grid-template-columns: 1fr; }
       .dash-periodo-label { margin-left: 0; width: 100%; }
     }
-  </style>
+
+    /* ─── Perfil Visualización / Consulta: solo ver + exportar ─── */
+    body.fp-readonly #carga,
+    body.fp-readonly #btnGuardarComprobante,
+    body.fp-readonly #btnLimpiarForm,
+    body.fp-readonly #btnCancelarEdicion,
+    body.fp-readonly #btnAgregarItemPhr,
+    body.fp-readonly #btnAgregarPhrFlotante,
+    body.fp-readonly #btnDuplicarUltimoPhr,
+    body.fp-readonly #btnCopiarComprobante,
+    body.fp-readonly #btnCargarPorNumero,
+    body.fp-readonly #btnGuardarAdicionalesTarifa,
+    body.fp-readonly #fileTarifario,
+    body.fp-readonly #btnRestaurarTarifarioDefault,
+    body.fp-readonly #btnRestaurarVersionTarifa,
+    body.fp-readonly #btnAplicarTarifaPhr,
+    body.fp-readonly #fileRestoreLocal,
+    body.fp-readonly label[for="fileRestoreLocal"],
+    body.fp-readonly #btnRestoreSheets,
+    body.fp-readonly .btn-icon.edit,
+    body.fp-readonly .btn-icon.del,
+    body.fp-readonly .autosave-bar,
+    body.fp-readonly #btnRestaurarAutosave,
+    body.fp-readonly #btnDescartarAutosave,
+    body.fp-readonly .editing-banner,
+    body.fp-readonly .floating-btn {
+      display: none !important;
+    }
+    body.fp-readonly .menu-item[data-section="carga"] {
+      opacity: 0.4;
+      pointer-events: none;
+      filter: grayscale(0.5);
+    }
+    body.fp-readonly .menu-item[data-section="carga"]::after {
+      content: " solo lectura";
+      font-size: 0.58rem;
+      opacity: 0.85;
+    }
+    body.fp-readonly #fpReadonlyBanner { display: flex !important; }
+    #fpReadonlyBanner {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(90deg, #5b21b6, #7c3aed);
+      color: #fff;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    /* Export / view keep visible */
+    body.fp-readonly #exportaciones,
+    body.fp-readonly #btnBackupLocal,
+    body.fp-readonly #exportarExcelBtn,
+    body.fp-readonly #exportarSeleccionadosBtn,
+    body.fp-readonly #exportarPorComprobanteBtn,
+    body.fp-readonly #btnPdfListado,
+    body.fp-readonly #btnPdfComprobante,
+    body.fp-readonly #btnExportTarifario,
+    body.fp-readonly #btnExportarInformeMensual,
+    body.fp-readonly #btnImprimirComprobante,
+    body.fp-readonly .btn-icon.print,
+    body.fp-readonly .btn-icon.view {
+      display: inline-flex !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+      filter: none !important;
+    }
+    body.fp-readonly #btnImprimirComprobante { display: inline-flex !important; }
+  
+    /* Bloqueo total de importación / subida de archivos (cualquier formato) */
+    body.fp-readonly input[type="file"],
+    body.fp-readonly label[for]:has(+ input[type="file"]),
+    body.fp-readonly label:has(input[type="file"]),
+    body.fp-readonly [data-import],
+    body.fp-readonly .file-input,
+    body.fp-readonly .lt-file-upload,
+    body.fp-readonly .import-zone {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+</style>
 </head>
 <body>
   <div class="sidebar">
@@ -1364,7 +1447,73 @@
     </div>
   </div>
 
+
 <script>
+/* ═══════════════════════════════════════════════════════════════
+ *  AUTH COMPARTIDO CON PORTAL UNIBER · solo lectura para consulta
+ * ═══════════════════════════════════════════════════════════════ */
+const FP_AUTH_SESSION_KEY = 'uniber_auth_session_v1';
+const FP_AUTH_DELETE_SESSION_KEY = 'uniber_auth_delete_session_v1';
+
+function fpAuthGetSession() {
+  try {
+    const raw = sessionStorage.getItem(FP_AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.username || !s.exp) return null;
+    if (Date.now() > s.exp) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function fpAuthIsReadOnly() {
+  const s = fpAuthGetSession();
+  if (!s) return false;
+  if (s.role === 'consulta') return true;
+  if (s.perms && s.perms.soloLectura) return true;
+  return false;
+}
+function fpAuthCanDelete() {
+  const s = fpAuthGetSession();
+  if (!s) return true;
+  if (s.role === 'consulta') return false;
+  if (s.role === 'admin') return true;
+  try {
+    const raw = sessionStorage.getItem(FP_AUTH_DELETE_SESSION_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    return !!(d && d.until && Date.now() <= d.until);
+  } catch (e) { return false; }
+}
+function fpAuthRequireWrite(actionLabel) {
+  if (!fpAuthIsReadOnly()) return true;
+  const label = actionLabel || 'modificar datos';
+  try {
+    if (typeof toast === 'function') toast('Perfil Visualización: solo ver y exportar. No se permite ' + label, 'error');
+    else alert('Perfil Visualización y Consulta: solo podés ver y exportar.\nNo está permitido ' + label + '.');
+  } catch (e) {
+    alert('Perfil Visualización: no se permite ' + label);
+  }
+  return false;
+}
+function fpApplyReadOnlyUI() {
+  const ro = fpAuthIsReadOnly();
+  document.body.classList.toggle('fp-readonly', ro);
+  document.body.classList.toggle('role-consulta', ro);
+  let banner = document.getElementById('fpReadonlyBanner');
+  if (ro) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'fpReadonlyBanner';
+      banner.innerHTML = '<i class="fas fa-eye"></i> <span>Modo Visualización · solo lectura y exportación · sin carga ni modificación</span>';
+      const main = document.querySelector('.main-content') || document.body;
+      main.insertBefore(banner, main.firstChild);
+    }
+    banner.style.display = 'flex';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
 /* ========== STATE ========== */
 let comprobantes = [];
 let itemsTemp = [];
@@ -3361,6 +3510,7 @@ const TarifarioService = {
     this.save(t);
   },
   async importExcel(file) {
+    if (!fpAuthRequireWrite("importar tarifario")) throw new Error("Solo lectura");
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: "array" });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -3955,6 +4105,7 @@ function initPhrFieldNavigation(cont) {
   });
 }
 function agregarPhr(copia = null) {
+  if (!fpAuthRequireWrite('agregar PHR')) return;
   const dens = getDensidadDefault();
   itemsTemp.push(copia ? {
     ...copia,
@@ -3992,6 +4143,7 @@ function agregarPhr(copia = null) {
 
 /* ========== CRUD ========== */
 function guardarComprobante() {
+  if (!fpAuthRequireWrite('guardar comprobantes')) return;
   const numero = document.getElementById("compCajaManual").value.trim();
   const fecha = document.getElementById("floteFecha").value;
   if (!numero) return toast("Número requerido", "error");
@@ -4292,11 +4444,11 @@ function renderListado() {
       </td>
       <td style="text-align:center"><div class="semaforo" style="background:${color}"></div></td>
       <td><div class="acciones">
-        <button class="btn-icon edit" title="Editar" onclick="editarComprobante('${comp.id}')"><i class="fas fa-edit"></i></button>
+        ${fpAuthIsReadOnly() ? "" : `<button class="btn-icon edit" title="Editar" onclick="editarComprobante('${comp.id}')"><i class="fas fa-edit"></i></button>`}
         <button class="btn-icon view" title="Ver" onclick="mostrarDetalle('${comp.id}')"><i class="fas fa-eye"></i></button>
         <button class="btn-icon print" title="Imprimir" onclick="imprimirPorId('${comp.id}')"><i class="fas fa-print"></i></button>
         <button class="btn-icon" title="WhatsApp" onclick="WhatsAppService.shareComprobante(comprobantes.find(c=>c.id==='${comp.id}'))" style="color:#25D366"><i class="fab fa-whatsapp"></i></button>
-        <button class="btn-icon del" title="Eliminar" onclick="confirmarEliminar('${comp.id}','${escapeHtml(comp.numero)}')"><i class="fas fa-trash"></i></button>
+        ${fpAuthIsReadOnly() ? "" : `<button class="btn-icon del" title="Eliminar" onclick="confirmarEliminar('${comp.id}','${escapeHtml(comp.numero)}')"><i class="fas fa-trash"></i></button>`}
         <select onchange="cambiarEstado('${comp.id}',this.value)" style="padding:3px 6px;font-size:.72rem;border-radius:10px">
           <option value="Autorizado" ${comp.estado==="Autorizado"?"selected":""}>Autorizar</option>
           <option value="Pendiente" ${comp.estado==="Pendiente"?"selected":""}>Pendiente</option>
@@ -4329,10 +4481,10 @@ function renderListado() {
       <div style="font-size:.8rem;color:var(--muted);margin:4px 0">${fmtFecha(comp.fecha)} · ${comp.estado} · ${fmtMoneda(totalItems(comp.items))}</div>
       <div style="font-size:.78rem">${escapeHtml(transportistasDe(comp))}</div>
       <div class="acciones" style="margin-top:8px">
-        <button class="btn-icon edit" onclick="editarComprobante('${comp.id}')"><i class="fas fa-edit"></i></button>
+        ${fpAuthIsReadOnly() ? "" : `<button class="btn-icon edit" onclick="editarComprobante('${comp.id}')"><i class="fas fa-edit"></i></button>`}
         <button class="btn-icon print" onclick="imprimirPorId('${comp.id}')"><i class="fas fa-print"></i></button>
         <button class="btn-icon" title="WhatsApp" onclick="WhatsAppService.shareComprobante(comprobantes.find(c=>c.id==='${comp.id}'))" style="color:#25D366"><i class="fab fa-whatsapp"></i></button>
-        <button class="btn-icon del" onclick="confirmarEliminar('${comp.id}','${escapeHtml(comp.numero)}')"><i class="fas fa-trash"></i></button>
+        ${fpAuthIsReadOnly() ? "" : `<button class="btn-icon del" title="Eliminar" onclick="confirmarEliminar('${comp.id}','${escapeHtml(comp.numero)}')"><i class="fas fa-trash"></i></button>`}
       </div>
     </div>`;
   }).join("");
@@ -4353,6 +4505,7 @@ function renderListado() {
 window.cambiarPagina = d => { paginaActual += d; renderListado(); };
 
 window.editarComprobante = function(id) {
+  if (!fpAuthRequireWrite("editar comprobantes")) return;
   const comp = comprobantes.find(c => c.id === id);
   if (!comp) return;
   comprobanteEditandoId = comp.id;
@@ -4389,6 +4542,8 @@ window.editarComprobante = function(id) {
   toast(`Editando ${comp.numero}`, "info");
 };
 window.confirmarEliminar = function(id, numero) {
+  if (!fpAuthRequireWrite("eliminar comprobantes")) return;
+  if (!fpAuthCanDelete()) { try { toast("Sin permiso de eliminación.", "error"); } catch(e) {} return; }
   showModal({
     title: "Eliminar comprobante",
     body: `¿Eliminar <strong>${numero}</strong>?`,
@@ -5240,6 +5395,12 @@ window.imprimirPorId = function(id) {
 /* ========== NAV ========== */
 document.querySelectorAll(".menu-item").forEach(item => {
   item.onclick = () => {
+    if (item.dataset.section === "carga" && typeof fpAuthIsReadOnly === "function" && fpAuthIsReadOnly()) {
+      try { toast("Perfil Visualización: sin acceso a carga o edición", "error"); } catch (e) {
+        alert("Perfil Visualización: sin acceso a carga o edición");
+      }
+      return;
+    }
     const el = document.getElementById(item.dataset.section);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -5317,6 +5478,7 @@ window.addEventListener("beforeunload", (e) => {
 TarifarioService.refreshUI();
 document.getElementById("buscarDestinoTarifa")?.addEventListener("input", e => TarifarioService.renderTabla(e.target.value));
 document.getElementById("btnGuardarAdicionalesTarifa")?.addEventListener("click", () => {
+  if (!fpAuthRequireWrite('guardar adicionales de tarifa')) return;
   TarifarioService.setAdicionales({
     desde2Cliente: parseFloat(document.getElementById("tarifaAdic2Cliente")?.value) || 0,
     hasta2ClientesSur: parseFloat(document.getElementById("tarifaAdicSur")?.value) || 0,
@@ -5326,6 +5488,7 @@ document.getElementById("btnGuardarAdicionalesTarifa")?.addEventListener("click"
   toast("Adicionales guardados", "success");
 });
 document.getElementById("fileTarifario")?.addEventListener("change", async e => {
+  if (!fpAuthRequireWrite('importar tarifario')) { e.target.value = ""; return; }
   const file = e.target.files?.[0];
   if (!file) return;
   try {
@@ -5344,6 +5507,7 @@ document.getElementById("btnExportTarifario")?.addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 });
 document.getElementById("btnRestaurarTarifarioDefault")?.addEventListener("click", () => {
+  if (!fpAuthRequireWrite('restaurar tarifario')) return;
   showModal({
     title: "Restaurar tarifario default",
     body: "La versión actual se guarda en el historial y se carga el tarifario UNIMAX embebido (03-08-2026).",
@@ -5352,6 +5516,7 @@ document.getElementById("btnRestaurarTarifarioDefault")?.addEventListener("click
   });
 });
 document.getElementById("btnRestaurarVersionTarifa")?.addEventListener("click", () => {
+  if (!fpAuthRequireWrite('restaurar versión de tarifario')) return;
   const v = document.getElementById("selectHistorialTarifario")?.value;
   if (v === "" || v == null) return toast("Elegí una versión", "error");
   TarifarioService.restoreVersion(+v);
@@ -5512,6 +5677,7 @@ document.getElementById("btnWhatsAppComprobante")?.addEventListener("click", () 
 });
 
 document.getElementById("btnCopiarComprobante").onclick = () => {
+  if (!fpAuthRequireWrite('copiar comprobante')) return;
   if (!itemsTemp.length) return toast("Sin datos", "error");
   showModal({
     title: "Copiar comprobante",
@@ -5538,6 +5704,7 @@ document.getElementById("btnBackupLocal").onclick = () => {
 document.getElementById("fileRestoreLocal").addEventListener("change", async e => {
   const file = e.target.files?.[0];
   if (!file) return;
+  if (!fpAuthRequireWrite('restaurar backup')) { e.target.value = ""; return; }
   try {
     const data = await StorageService.parseBackupFile(file);
     showModal({
@@ -5570,6 +5737,7 @@ document.getElementById("btnBackupSheets").onclick = async () => {
   } catch (err) { toast("Sheets: " + (err.message || "falló"), "error"); }
 };
 document.getElementById("btnRestoreSheets").onclick = async () => {
+  if (!fpAuthRequireWrite('restaurar desde Sheets')) return;
   const url = document.getElementById("googleScriptUrl").value.trim();
   if (!url) return toast("Pegá la URL del Apps Script", "error");
   try {
@@ -5714,9 +5882,11 @@ document.addEventListener("keydown", function toastKeydownEscape(e) {
 })();
 
 /* ========== ARRANQUE ========== */
+try { fpApplyReadOnlyUI(); } catch (e) {}
 limpiarFormulario();
 initDashPeriodChips();
 actualizarTodo();
+try { fpApplyReadOnlyUI(); } catch (e) {}
 ensureDashLazyObserver();
 try { aplicarDeepLinkFletes(); } catch (e) { console.warn(e); }
 
@@ -5776,6 +5946,90 @@ try { aplicarDeepLinkFletes(); } catch (e) { console.warn(e); }
       // el usuario lo descarte explícitamente con el botón de la barra.
     });
   }, 500);
+})();
+
+/* ── Bloqueo global de subida/importación en modo visualización ── */
+(function () {
+  function fpBlockFileInput(e) {
+    if (typeof fpAuthIsReadOnly === 'function' && fpAuthIsReadOnly()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { e.target.value = ''; } catch (err) {}
+      if (typeof fpAuthRequireWrite === 'function') {
+        fpAuthRequireWrite('importar o subir archivos');
+      } else {
+        try { alert('Perfil Visualización: no se permite importar ni subir archivos.'); } catch (err) {}
+      }
+      return false;
+    }
+  }
+  function fpLockAllFileInputs() {
+    if (typeof fpAuthIsReadOnly !== 'function' || !fpAuthIsReadOnly()) return;
+    document.querySelectorAll('input[type="file"]').forEach(function (inp) {
+      inp.disabled = true;
+      inp.setAttribute('aria-disabled', 'true');
+      inp.style.display = 'none';
+      try { inp.value = ''; } catch (e) {}
+      inp.onchange = null;
+      inp.onclick = function (ev) { ev.preventDefault(); return false; };
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) {
+      fpBlockFileInput(e);
+    }
+  }, true);
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.matches && t.matches('input[type="file"]')) {
+      if (typeof fpAuthIsReadOnly === 'function' && fpAuthIsReadOnly()) {
+        e.preventDefault(); e.stopPropagation();
+        fpAuthRequireWrite && fpAuthRequireWrite('subir archivos');
+      }
+    }
+    // labels that trigger file inputs
+    if (t.closest) {
+      const lab = t.closest('label');
+      if (lab && lab.htmlFor) {
+        const inp = document.getElementById(lab.htmlFor);
+        if (inp && inp.type === 'file' && typeof fpAuthIsReadOnly === 'function' && fpAuthIsReadOnly()) {
+          e.preventDefault(); e.stopPropagation();
+          fpAuthRequireWrite && fpAuthRequireWrite('subir archivos');
+        }
+      }
+    }
+  }, true);
+  document.addEventListener('dragover', function (e) {
+    if (typeof fpAuthIsReadOnly === 'function' && fpAuthIsReadOnly()) {
+      /* no bloquear todo drag, solo drop de archivos */
+    }
+  }, true);
+  document.addEventListener('drop', function (e) {
+    if (typeof fpAuthIsReadOnly === 'function' && fpAuthIsReadOnly()) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        e.preventDefault(); e.stopPropagation();
+        fpAuthRequireWrite && fpAuthRequireWrite('soltar archivos para importar');
+      }
+    }
+  }, true);
+  // re-lock after UI applies
+  if (typeof fpApplyReadOnlyUI === 'function') {
+    const _origApply_fp = fpApplyReadOnlyUI;
+    window.fpApplyReadOnlyUI = function () {
+      _origApply_fp();
+      try { fpLockAllFileInputs(); } catch (e) {}
+    };
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(fpLockAllFileInputs, 50);
+      setTimeout(fpLockAllFileInputs, 500);
+    });
+  } else {
+    setTimeout(fpLockAllFileInputs, 50);
+    setTimeout(fpLockAllFileInputs, 500);
+  }
 })();
 </script>
 </body>

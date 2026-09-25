@@ -369,7 +369,85 @@
       .modal-grande { max-width: 98vw; padding: 12px; }
       .kpi { min-width: 100px; }
     }
-  </style>
+
+    /* ─── Perfil Visualización / Consulta: solo ver + exportar ─── */
+    body.cp-readonly #fileImport,
+    body.cp-readonly label[for="fileImport"],
+    body.cp-readonly #fileRestore,
+    body.cp-readonly label[for="fileRestore"],
+    body.cp-readonly #btnEliminarCorte,
+    body.cp-readonly #btnRenombrarCorte,
+    body.cp-readonly #btnElimSel,
+    body.cp-readonly #btnLimpiarTodo,
+    body.cp-readonly #btnSelTodas,
+    body.cp-readonly #btnSelTodasCorte,
+    body.cp-readonly #btnDesel,
+    body.cp-readonly #btnEnviarPago,
+    body.cp-readonly #btnCorregirFac,
+    body.cp-readonly #btnVaciarPapelera,
+    body.cp-readonly .btn-elim-una,
+    body.cp-readonly .chip-btn.danger,
+    body.cp-readonly [data-restore],
+    body.cp-readonly [data-purge],
+    body.cp-readonly .fac-input,
+    body.cp-readonly .prov-input,
+    body.cp-readonly .nro-input,
+    body.cp-readonly .dup-select,
+    body.cp-readonly #checkAll,
+    body.cp-readonly .row-check,
+    body.cp-readonly #btnGuardarConfigExport,
+    body.cp-readonly #cfgLogoFile,
+    body.cp-readonly #cfgLogoDefault,
+    body.cp-readonly #cfgLogoQuitar {
+      display: none !important;
+      pointer-events: none !important;
+    }
+    body.cp-readonly #cpReadonlyBanner { display: flex !important; }
+    #cpReadonlyBanner {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(90deg, #5b21b6, #7c3aed);
+      color: #fff;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 12px;
+      margin-bottom: 14px;
+    }
+    /* Export / view always allowed */
+    body.cp-readonly #btnBackup,
+    body.cp-readonly #btnPlantilla,
+    body.cp-readonly #btnExportPivot,
+    body.cp-readonly #btnExportSel,
+    body.cp-readonly #btnPrintPivot,
+    body.cp-readonly #btnExportResumen,
+    body.cp-readonly #btnExportPowerBI,
+    body.cp-readonly #btnExportarTodas,
+    body.cp-readonly #btnExportarBuscarProv,
+    body.cp-readonly #btnVerTodas,
+    body.cp-readonly #btnBuscarProv,
+    body.cp-readonly #btnResolverDup,
+    body.cp-readonly #btnConfigExport,
+    body.cp-readonly #btnPapelera {
+      display: inline-flex !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+    }
+  
+    /* Bloqueo total de importación / subida de archivos (cualquier formato) */
+    body.cp-readonly input[type="file"],
+    body.cp-readonly label[for]:has(+ input[type="file"]),
+    body.cp-readonly label:has(input[type="file"]),
+    body.cp-readonly [data-import],
+    body.cp-readonly .file-input,
+    body.cp-readonly .lt-file-upload,
+    body.cp-readonly .import-zone {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+</style>
 </head>
 <body>
 <div class="topbar">
@@ -781,6 +859,75 @@
 <div class="toast" id="toast"></div>
 
 <script>
+
+/* ═══════════════════════════════════════════════════════════════
+ *  AUTH COMPARTIDO CON PORTAL UNIBER · solo lectura para consulta
+ * ═══════════════════════════════════════════════════════════════ */
+const CP_AUTH_SESSION_KEY = 'uniber_auth_session_v1';
+const CP_AUTH_DELETE_SESSION_KEY = 'uniber_auth_delete_session_v1';
+
+function cpAuthGetSession() {
+  try {
+    const raw = sessionStorage.getItem(CP_AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.username || !s.exp) return null;
+    if (Date.now() > s.exp) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function cpAuthIsReadOnly() {
+  const s = cpAuthGetSession();
+  if (!s) return false;
+  if (s.role === 'consulta') return true;
+  if (s.perms && s.perms.soloLectura) return true;
+  return false;
+}
+function cpAuthCanDelete() {
+  const s = cpAuthGetSession();
+  if (!s) return true;
+  if (s.role === 'consulta') return false;
+  if (s.role === 'admin') return true;
+  try {
+    const raw = sessionStorage.getItem(CP_AUTH_DELETE_SESSION_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    return !!(d && d.until && Date.now() <= d.until);
+  } catch (e) { return false; }
+}
+function cpAuthRequireWrite(actionLabel) {
+  if (!cpAuthIsReadOnly()) return true;
+  const label = actionLabel || 'modificar datos';
+  try {
+    if (typeof toast === 'function') toast('Perfil Visualización: solo ver y exportar. No se permite ' + label, true);
+    else alert('Perfil Visualización y Consulta: solo podés ver y exportar.\nNo está permitido ' + label + '.');
+  } catch (e) {
+    alert('Perfil Visualización: no se permite ' + label);
+  }
+  return false;
+}
+function cpApplyReadOnlyUI() {
+  const ro = cpAuthIsReadOnly();
+  document.body.classList.toggle('cp-readonly', ro);
+  document.body.classList.toggle('role-consulta', ro);
+  let banner = document.getElementById('cpReadonlyBanner');
+  if (ro) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'cpReadonlyBanner';
+      banner.innerHTML = '<i class="fas fa-eye"></i> <span>Modo Visualización · solo lectura y exportación · sin carga ni modificación</span>';
+      const wrap = document.querySelector('.wrap') || document.body;
+      const header = wrap.querySelector('.header');
+      if (header && header.nextSibling) wrap.insertBefore(banner, header.nextSibling);
+      else wrap.insertBefore(banner, wrap.firstChild);
+    }
+    banner.style.display = 'flex';
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
+
 (function () {
   'use strict';
 
@@ -1233,6 +1380,7 @@
 
 
   function guardar() {
+    if (cpAuthIsReadOnly()) return; // no persistir cambios en solo lectura
     setSaveStatus('saving');
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ version: 1, fechaCorte: $('fechaCorte').value || '', facturas, papelera }));
@@ -1949,6 +2097,8 @@
   }
 
   function eliminarCortePorFecha(corte) {
+    if (!cpAuthRequireWrite("eliminar corte")) return;
+    if (!cpAuthCanDelete()) { toast("Sin permiso de eliminación", true); return; }
     const c = normFechaCorte(corte);
     if (!c) return;
     // Reutiliza la lógica poniendo el valor temporalmente
@@ -2110,6 +2260,7 @@
   }
 
   async function importarArchivo(file) {
+    if (!cpAuthRequireWrite("importar facturas")) return;
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -3265,6 +3416,7 @@
   }
 
   function enviarAPago() {
+    if (!cpAuthRequireWrite("enviar a pago")) return;
     const corte = $('fechaCorte').value;
     if (!corte) { toast('Definí la fecha de corte', true); return; }
     const sel = facturas.filter(f => f.aPago && (normFechaCorte(f.fechaCorte) === normFechaCorte(corte) || !f.fechaCorte) && puedeMarcarAPago(f));
@@ -4024,6 +4176,7 @@
     box.innerHTML = html;
     box.querySelectorAll('[data-restore]').forEach(btn => {
       btn.onclick = () => {
+        if (!cpAuthRequireWrite('restaurar de papelera')) return;
         const i = Number(btn.dataset.restore);
         const item = papelera[i];
         if (!item) return;
@@ -4042,6 +4195,8 @@
     });
     box.querySelectorAll('[data-purge]').forEach(btn => {
       btn.onclick = () => {
+        if (!cpAuthRequireWrite('purgar de papelera')) return;
+        if (!cpAuthCanDelete()) { toast('Sin permiso de eliminación', true); return; }
         const i = Number(btn.dataset.purge);
         confirmar({
           titulo: 'Borrar definitivamente',
@@ -4060,6 +4215,8 @@
 
   /** Elimina todas las facturas del corte seleccionado en el desplegable (o fecha actual). */
   function eliminarCorteSeleccionado() {
+    if (!cpAuthRequireWrite("eliminar corte")) return;
+    if (!cpAuthCanDelete()) { toast("Sin permiso de eliminación", true); return; }
     const corte = ($('selCorteExistente').value || $('fechaCorte').value || '').trim();
     if (!corte) {
       toast('Elegí un corte en la lista desplegable o definí la fecha de corte', true);
@@ -4104,7 +4261,10 @@
     if (v) activarCorte(v);
   });
   $('filtroCorteListado').addEventListener('change', () => { paginaActual = 1; guardarUI(); renderListado(); });
-  $('fileImport').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) importarArchivo(f); e.target.value = ''; });
+  $('fileImport').addEventListener('change', e => {
+    if (!cpAuthRequireWrite('importar archivo')) { e.target.value = ''; return; }
+    const f = e.target.files && e.target.files[0]; if (f) importarArchivo(f); e.target.value = '';
+  });
   $('btnPlantilla').onclick = descargarPlantilla;
   $('btnBackup').onclick = () => {
     const blob = new Blob([JSON.stringify({ version: 1, fecha: new Date().toISOString(), fechaCorte: $('fechaCorte').value, facturas }, null, 2)], { type: 'application/json' });
@@ -4114,6 +4274,7 @@
   };
   $('fileRestore').addEventListener('change', e => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
+    if (!cpAuthRequireWrite('restaurar respaldo')) { e.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = ev => {
       try {
@@ -4152,7 +4313,7 @@
   });
 
   
-  $('btnCorregirFac').onclick = corregirFacturaSeleccionadas;
+  $('btnCorregirFac').onclick = () => { if (!cpAuthRequireWrite('corregir N° factura')) return; corregirFacturaSeleccionadas(); };
   $('btnLimpiarFiltros').onclick = () => {
     $('buscar').value = '';
     $('filtroUnidad').value = '';
@@ -4168,6 +4329,7 @@
   };
 
   $('btnSelTodas').onclick = () => {
+    if (!cpAuthRequireWrite('marcar a pago')) return;
     const corte = $('fechaCorte').value;
     if (!corte) { toast('Definí la fecha de corte', true); return; }
     let n = 0, skipped = 0;
@@ -4181,6 +4343,7 @@
     toast(`${n} marcadas a pago` + (skipped ? ` · ${skipped} omitidas por duplicados` : ''));
   };
   $('btnSelTodasCorte').onclick = () => {
+    if (!cpAuthRequireWrite('marcar a pago')) return;
     const corte = $('fechaCorte').value;
     if (!corte) { toast('Definí la fecha de corte', true); return; }
     let count = 0, skipped = 0;
@@ -4194,6 +4357,7 @@
     toast(`${count} marcadas a pago` + (skipped ? ` · ${skipped} omitidas por duplicados` : ''));
   };
   $('btnDesel').onclick = () => {
+    if (!cpAuthRequireWrite('quitar selección a pago')) return;
     getFiltradas().forEach(f => { f.aPago = false; });
     guardar(); renderAll(); toast('Selección quitada en filtradas');
   };
@@ -4291,6 +4455,8 @@
   });
 
   $('btnElimSel').onclick = () => {
+    if (!cpAuthRequireWrite('eliminar facturas')) return;
+    if (!cpAuthCanDelete()) { toast('Sin permiso de eliminación', true); return; }
     const ids = new Set();
     document.querySelectorAll('.row-check:checked').forEach(cb => ids.add(cb.dataset.id));
     if (!ids.size) { toast('Marcá filas con el checkbox', true); return; }
@@ -4313,6 +4479,8 @@
     });
   };
   $('btnLimpiarTodo').onclick = () => {
+    if (!cpAuthRequireWrite('eliminar todos los datos')) return;
+    if (!cpAuthCanDelete()) { toast('Sin permiso de eliminación', true); return; }
     if (!facturas.length && !$('fechaCorte').value) { toast('Ya está vacío'); return; }
     confirmar({
       titulo: '⚠️ ¿Eliminar todos los datos?',
@@ -4431,6 +4599,91 @@
   cargarUI();
   if (!$('fechaCorte').value) $('fechaCorte').value = new Date().toISOString().slice(0, 10);
   renderAll();
+  try { cpApplyReadOnlyUI(); } catch (e) {}
+})();
+
+/* ── Bloqueo global de subida/importación en modo visualización ── */
+(function () {
+  function cpBlockFileInput(e) {
+    if (typeof cpAuthIsReadOnly === 'function' && cpAuthIsReadOnly()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { e.target.value = ''; } catch (err) {}
+      if (typeof cpAuthRequireWrite === 'function') {
+        cpAuthRequireWrite('importar o subir archivos');
+      } else {
+        try { alert('Perfil Visualización: no se permite importar ni subir archivos.'); } catch (err) {}
+      }
+      return false;
+    }
+  }
+  function cpLockAllFileInputs() {
+    if (typeof cpAuthIsReadOnly !== 'function' || !cpAuthIsReadOnly()) return;
+    document.querySelectorAll('input[type="file"]').forEach(function (inp) {
+      inp.disabled = true;
+      inp.setAttribute('aria-disabled', 'true');
+      inp.style.display = 'none';
+      try { inp.value = ''; } catch (e) {}
+      inp.onchange = null;
+      inp.onclick = function (ev) { ev.preventDefault(); return false; };
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) {
+      cpBlockFileInput(e);
+    }
+  }, true);
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.matches && t.matches('input[type="file"]')) {
+      if (typeof cpAuthIsReadOnly === 'function' && cpAuthIsReadOnly()) {
+        e.preventDefault(); e.stopPropagation();
+        cpAuthRequireWrite && cpAuthRequireWrite('subir archivos');
+      }
+    }
+    // labels that trigger file inputs
+    if (t.closest) {
+      const lab = t.closest('label');
+      if (lab && lab.htmlFor) {
+        const inp = document.getElementById(lab.htmlFor);
+        if (inp && inp.type === 'file' && typeof cpAuthIsReadOnly === 'function' && cpAuthIsReadOnly()) {
+          e.preventDefault(); e.stopPropagation();
+          cpAuthRequireWrite && cpAuthRequireWrite('subir archivos');
+        }
+      }
+    }
+  }, true);
+  document.addEventListener('dragover', function (e) {
+    if (typeof cpAuthIsReadOnly === 'function' && cpAuthIsReadOnly()) {
+      /* no bloquear todo drag, solo drop de archivos */
+    }
+  }, true);
+  document.addEventListener('drop', function (e) {
+    if (typeof cpAuthIsReadOnly === 'function' && cpAuthIsReadOnly()) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        e.preventDefault(); e.stopPropagation();
+        cpAuthRequireWrite && cpAuthRequireWrite('soltar archivos para importar');
+      }
+    }
+  }, true);
+  // re-lock after UI applies
+  if (typeof cpApplyReadOnlyUI === 'function') {
+    const _origApply_cp = cpApplyReadOnlyUI;
+    window.cpApplyReadOnlyUI = function () {
+      _origApply_cp();
+      try { cpLockAllFileInputs(); } catch (e) {}
+    };
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(cpLockAllFileInputs, 50);
+      setTimeout(cpLockAllFileInputs, 500);
+    });
+  } else {
+    setTimeout(cpLockAllFileInputs, 50);
+    setTimeout(cpLockAllFileInputs, 500);
+  }
 })();
 </script>
 </body>

@@ -2246,7 +2246,114 @@
             transform: translateY(-1px);
         }
 
-    </style>
+    
+        /* ─── Perfil Visualización / Consulta: solo ver + exportar ─── */
+        body.lt-readonly .lt-write-only,
+        body.lt-readonly #panel-carga,
+        body.lt-readonly #carga-manual-anchor,
+        body.lt-readonly #btnGuardarAutorizacion,
+        body.lt-readonly #btnCancelarEdicion,
+        body.lt-readonly #btnAgregarFila,
+        body.lt-readonly #btnDuplicarFila,
+        body.lt-readonly #btnCargaAsistida,
+        body.lt-readonly #btnAplicarTarifas,
+        body.lt-readonly #btnAgregarTransferencia,
+        body.lt-readonly #btnLimpiarTransferencias,
+        body.lt-readonly #btnAgregarRutaAbast,
+        body.lt-readonly #btnAgregarRutaLocal,
+        body.lt-readonly #btnEliminarTodo,
+        body.lt-readonly #inputFletes,
+        body.lt-readonly #inputRespaldo,
+        body.lt-readonly #inputTarifaLocal,
+        body.lt-readonly #inputTarifaLD,
+        body.lt-readonly #btnEjemploLocal,
+        body.lt-readonly #btnEjemploAbast,
+        body.lt-readonly #btnLimpiarTarifarioLocal,
+        body.lt-readonly #btnLimpiarTarifarioLD,
+        body.lt-readonly .btn-eliminar-fila,
+        body.lt-readonly .btn-icon.edit,
+        body.lt-readonly .btn-icon.del,
+        body.lt-readonly .btn-eliminar,
+        body.lt-readonly .btn-editar,
+        body.lt-readonly .btn-ruta,
+        body.lt-readonly #stickySaveBar,
+        body.lt-readonly .opcion-transferencia,
+        body.lt-readonly button[onclick*="eliminarVersion"],
+        body.lt-readonly #btnDescargarPlantillaRTOS,
+        body.lt-readonly label[for="inputFletes"],
+        body.lt-readonly .seccion-filtro:has(#inputFletes),
+        body.lt-readonly .seccion-filtro:has(#inputRespaldo) > div:has(#inputRespaldo),
+        body.lt-readonly .seccion-gestion .opcion-transferencia {
+          display: none !important;
+        }
+        body.lt-readonly .seccion-carga-manual,
+        body.lt-readonly #panel-carga.sidebar-panel {
+          display: none !important;
+        }
+        body.lt-readonly .sidebar-menu-nav button[data-panel="panel-carga"] {
+          opacity: 0.4;
+          pointer-events: none;
+          filter: grayscale(0.5);
+        }
+        body.lt-readonly .sidebar-menu-nav button[data-panel="panel-carga"]::after {
+          content: " solo lectura";
+          font-size: 0.58rem;
+          opacity: 0.8;
+        }
+        body.lt-readonly #ltReadonlyBanner {
+          display: flex !important;
+        }
+        #ltReadonlyBanner {
+          display: none;
+          align-items: center;
+          gap: 0.5rem;
+          background: linear-gradient(90deg, #5b21b6, #7c3aed);
+          color: #fff;
+          padding: 0.45rem 0.85rem;
+          font-size: 0.78rem;
+          font-weight: 700;
+          border-radius: 10px;
+          margin-bottom: 0.5rem;
+        }
+        body.lt-readonly input:not([type="search"]):not(#buscadorRtoHeader):not(#buscadorAutorizacionHeader):not(.filtro-safe),
+        body.lt-readonly select:not(#filtroPeriodo):not(#filtroProveedor):not(#filtroTransportista):not(#filtroTipoServicio):not(#mainFiltroPeriodo):not(#mainFiltroProveedor):not(#mainFiltroTransportista):not(#mainFiltroTipo):not(#informeMesA):not(#informeMesB),
+        body.lt-readonly textarea {
+          pointer-events: none;
+        }
+        /* Permitir filtros y export siempre */
+        body.lt-readonly #btnExportarExcel,
+        body.lt-readonly #btnExportarPDF,
+        body.lt-readonly #btnExportarRespaldo,
+        body.lt-readonly #btnExportarInformeMensual,
+        body.lt-readonly #btnDescargarPlantilla,
+        body.lt-readonly #btnPlantillaTarifarioAbast,
+        body.lt-readonly #btnPlantillaTarifarioLocal,
+        body.lt-readonly #btnReporteDesvios,
+        body.lt-readonly #btnExportarRTOSCargados,
+        body.lt-readonly .btn-icon.print,
+        body.lt-readonly .btn-icon.ver,
+        body.lt-readonly .btn-comprobante,
+        body.lt-readonly .btn-detalle-rtos,
+        body.lt-readonly .btn-reimprimir {
+          display: inline-flex !important;
+          pointer-events: auto !important;
+          opacity: 1 !important;
+          filter: none !important;
+        }
+
+    /* Bloqueo total de importación / subida de archivos (cualquier formato) */
+    body.lt-readonly input[type="file"],
+    body.lt-readonly label[for]:has(+ input[type="file"]),
+    body.lt-readonly label:has(input[type="file"]),
+    body.lt-readonly [data-import],
+    body.lt-readonly .file-input,
+    body.lt-readonly .lt-file-upload,
+    body.lt-readonly .import-zone {
+      display: none !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+</style>
 </head>
 <body>
 <aside>
@@ -2764,7 +2871,93 @@
 <!-- File picker oculto para carga asistida -->
 <input type="file" id="ca_filePicker" accept=".csv,.xlsx,.xls" style="display:none;">
 
+
 <script>
+    /* ═══════════════════════════════════════════════════════════════
+     *  AUTH COMPARTIDO CON PORTAL UNIBER · solo lectura para consulta
+     * ═══════════════════════════════════════════════════════════════ */
+    const LT_AUTH_SESSION_KEY = 'uniber_auth_session_v1';
+    const LT_AUTH_USERS_KEY = 'uniber_auth_users_v1';
+    const LT_AUTH_DELETE_SESSION_KEY = 'uniber_auth_delete_session_v1';
+
+    function ltAuthGetSession() {
+        try {
+            const raw = sessionStorage.getItem(LT_AUTH_SESSION_KEY);
+            if (!raw) return null;
+            const s = JSON.parse(raw);
+            if (!s || !s.username || !s.exp) return null;
+            if (Date.now() > s.exp) return null;
+            return s;
+        } catch (e) { return null; }
+    }
+    function ltAuthIsReadOnly() {
+        const s = ltAuthGetSession();
+        if (!s) return false; /* sin sesión portal: modo histórico abierto */
+        if (s.role === 'consulta') return true;
+        if (s.perms && s.perms.soloLectura) return true;
+        return false;
+    }
+    function ltAuthCanDelete() {
+        const s = ltAuthGetSession();
+        if (!s) return true;
+        if (s.role === 'consulta') return false;
+        if (s.role === 'admin') return true;
+        try {
+            const raw = sessionStorage.getItem(LT_AUTH_DELETE_SESSION_KEY);
+            if (!raw) return false;
+            const d = JSON.parse(raw);
+            return !!(d && d.until && Date.now() <= d.until);
+        } catch (e) { return false; }
+    }
+    function ltAuthRequireWrite(actionLabel) {
+        if (!ltAuthIsReadOnly()) return true;
+        const label = actionLabel || 'modificar datos';
+        try {
+            if (typeof mostrarToast === 'function') {
+                mostrarToast('Perfil Visualización: solo ver y exportar. No se permite ' + label, true);
+            } else {
+                alert('Perfil Visualización y Consulta: solo podés ver y exportar.\nNo está permitido ' + label + '.');
+            }
+        } catch (e) {
+            alert('Perfil Visualización: no se permite ' + label);
+        }
+        return false;
+    }
+    function ltApplyReadOnlyUI() {
+        const ro = ltAuthIsReadOnly();
+        document.body.classList.toggle('lt-readonly', ro);
+        document.body.classList.toggle('role-consulta', ro);
+        let banner = document.getElementById('ltReadonlyBanner');
+        if (ro) {
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'ltReadonlyBanner';
+                banner.innerHTML = '<i class="fas fa-eye"></i> <span>Modo Visualización · solo lectura y exportación · sin carga ni modificación</span>';
+                const main = document.querySelector('main');
+                if (main) main.insertBefore(banner, main.firstChild);
+                else document.body.insertBefore(banner, document.body.firstChild);
+            }
+            banner.style.display = 'flex';
+            /* Desactivar panel carga en menú */
+            document.querySelectorAll('.sidebar-menu-nav button[data-panel="panel-carga"]').forEach(b => {
+                b.setAttribute('aria-disabled', 'true');
+                b.title = 'Perfil solo lectura: sin acceso a carga';
+            });
+            /* Si el panel carga está activo, saltar a filtros/extra */
+            const panelCarga = document.getElementById('panel-carga');
+            if (panelCarga && panelCarga.classList.contains('active')) {
+                panelCarga.classList.remove('active');
+                const alt = document.getElementById('panel-extra') || document.getElementById('panel-tarifas') || document.querySelector('.sidebar-panel:not(#panel-carga)');
+                if (alt) alt.classList.add('active');
+                document.querySelectorAll('.sidebar-menu-nav button').forEach(b => b.classList.remove('active'));
+                const btnAlt = document.querySelector('.sidebar-menu-nav button[data-panel="' + (alt && alt.id) + '"]');
+                if (btnAlt) btnAlt.classList.add('active');
+            }
+        } else if (banner) {
+            banner.style.display = 'none';
+        }
+    }
+
     // ==================== VARIABLES GLOBALES ====================
     let tarifarioLD = [], tarifarioLocal = [], baseFletes = [], autorizacionesMeta = {}, comprobantesEmitidos = [];
     let opcionesTransferencia = [];
@@ -3138,6 +3331,7 @@
     }
 
     function eliminarVersionLocal() {
+        if (!ltAuthRequireWrite('eliminar versión de tarifario')) return;
         const id = document.getElementById("selectorVersionLocal").value;
         if (!id) { mostrarToast("No hay versión seleccionada", true); return; }
         const version = versionesLocal.find(v => v.id === id);
@@ -3156,6 +3350,7 @@
     }
 
     function eliminarVersionLD() {
+        if (!ltAuthRequireWrite('eliminar versión de tarifario')) return;
         const id = document.getElementById("selectorVersionLD").value;
         if (!id) { mostrarToast("No hay versión seleccionada", true); return; }
         const version = versionesLD.find(v => v.id === id);
@@ -3288,7 +3483,8 @@
         guardarStorage(); 
         refrescarTodosLosControlesOrigenDestino();
     };
-    function agregarOpcionTransferencia() { 
+    function agregarOpcionTransferencia() {
+        if (!ltAuthRequireWrite("agregar transferencias")) return; 
         let nom = document.getElementById("nuevaTransferenciaNombre").value.trim(); 
         let mon = parseFloat(document.getElementById("nuevaTransferenciaMonto").value); 
         if(!nom || isNaN(mon) || mon < 0){ mostrarToast("Complete nombre y monto válido (>=0)",true); return; } 
@@ -3300,7 +3496,8 @@
         refrescarTodosLosControlesOrigenDestino();
         mostrarToast(`Opción ${nom} agregada`); 
     }
-    function limpiarTransferencias() { 
+    function limpiarTransferencias() {
+        if (!ltAuthRequireWrite("limpiar transferencias")) return; 
         if(confirm("¿Eliminar todas las opciones de transferencia? Se restaurará una por defecto.")){ 
             opcionesTransferencia = [{nombre:"Transferencia estándar", monto:30000}]; 
             renderizarListaOpcionesTransferencia(); 
@@ -3415,6 +3612,7 @@
         }
     };
     function agregarRutaAbast() {
+        if (!ltAuthRequireWrite('agregar rutas de abastecimiento')) return;
         let origen = document.getElementById("nuevoOrigen").value.trim().toUpperCase();
         let destino = document.getElementById("nuevoDestino").value.trim().toUpperCase();
         let km = parseFloat(document.getElementById("nuevoKm").value);
@@ -3438,6 +3636,7 @@
         document.getElementById("nuevaTarifaAbast").value = "";
     }
     function agregarRutaLocal() {
+        if (!ltAuthRequireWrite('agregar rutas locales')) return;
         let destino = document.getElementById("nuevoDestinoLocal").value.trim().toUpperCase();
         let km = parseFloat(document.getElementById("nuevoKmLocal").value);
         let tarifa = parseFloat(document.getElementById("nuevaTarifaLocal").value);
@@ -4568,6 +4767,7 @@
     }
     
     async function guardarAutorizacion() {
+        if (!ltAuthRequireWrite('guardar autorizaciones')) return false;
         let auth = document.getElementById("manu_autorizacion").value.trim();
         if(!auth) { mostrarToast("Autorización obligatoria", true); return false; }
 
@@ -4716,6 +4916,7 @@
     }
     
     function editarAutorizacion(auth) {
+        if (!ltAuthRequireWrite('editar autorizaciones')) return;
         let remitos = baseFletes.filter(f => f.autorizacion === auth);
         if(!remitos.length) return;
         let p = remitos[0];
@@ -4757,6 +4958,11 @@
     
     function cancelarEdicion() { limpiarFormulario(); mostrarToast("Edición cancelada"); }
     function eliminarAutorizacion(auth) {
+        if (!ltAuthRequireWrite('eliminar autorizaciones')) return;
+        if (!ltAuthCanDelete()) {
+            try { mostrarToast('Sin permiso de eliminación. Pedí token al administrador.', true); } catch(e) {}
+            return;
+        }
         if(confirm(`¿Eliminar autorización ${auth}?`)) {
             baseFletes = baseFletes.filter(f => f.autorizacion !== auth);
             delete autorizacionesMeta[auth];
@@ -4792,9 +4998,11 @@
             });
         }
         let idComp = Date.now() + "-" + Math.random().toString(36).substr(2,6);
-        comprobantesEmitidos.unshift({id: idComp, autorizacion: auth, fechaEmision: new Date().toISOString(), importe: total, transportista});
-        guardarStorage();
-        actualizarListaComprobantesUI();
+        if (!ltAuthIsReadOnly()) {
+            comprobantesEmitidos.unshift({id: idComp, autorizacion: auth, fechaEmision: new Date().toISOString(), importe: total, transportista});
+            guardarStorage();
+            actualizarListaComprobantesUI();
+        }
         let payloadQR = ["UNIBER","CAJA-RTOS", String(auth||""), String(fecha||""), String(total), String(transportista||"")].join("|");
         let qrImg = "";
         try { if (typeof QRCode !== "undefined" && QRCode.toDataURL) qrImg = await QRCode.toDataURL(payloadQR, { width: 140, margin: 1 }); } catch(e) {}
@@ -4856,6 +5064,7 @@
     }
     
     function cargarArchivoFletes(e) {
+        if (!ltAuthRequireWrite('importar archivos de fletes')) { e.target.value = ""; return; }
         let file = e.target.files[0];
         if (!file) return;
         mostrarToast(`📂 Leyendo ${file.name}...`);
@@ -5031,6 +5240,7 @@
     }
     
     function cargarTarifarioLocal(e) {
+        if (!ltAuthRequireWrite("cargarTarifarioLocal")) return;
         const file = e.target.files[0];
         if (!file) return;
         const tipoImportacion = document.getElementById("tipoImportacionTarifaLocal").value;
@@ -5115,6 +5325,7 @@
     }
     
     function cargarTarifarioLD(e) {
+        if (!ltAuthRequireWrite("cargarTarifarioLD")) return;
         let file = e.target.files[0];
         if(!file) return;
         let reader = new FileReader();
@@ -5159,7 +5370,8 @@
         mostrarToast("✅ Ejemplo Abastecimiento agregado como nueva versión"); 
         renderizarCompleto(); 
     }
-    function limpiarTarifarioLocal() { 
+    function limpiarTarifarioLocal() {
+        if (!ltAuthRequireWrite("limpiarTarifarioLocal")) return; 
         if(versionesLocal.length && !confirm("¿Eliminar todas las versiones de tarifario local?")) return; 
         versionesLocal = []; 
         versionActivaLocal = null; 
@@ -5170,7 +5382,8 @@
         mostrarToast("Tarifario local limpiado"); 
         renderizarCompleto(); 
     }
-    function limpiarTarifarioLD() { 
+    function limpiarTarifarioLD() {
+        if (!ltAuthRequireWrite("limpiarTarifarioLD")) return; 
         if(versionesLD.length && !confirm("¿Eliminar todas las versiones de tarifario abastecimiento?")) return; 
         versionesLD = []; 
         versionActivaLD = null; 
@@ -5441,7 +5654,8 @@
         a.click(); 
         mostrarToast("Respaldo exportado"); 
     }
-    function importarRespaldo(e) { 
+    function importarRespaldo(e) {
+        if (!ltAuthRequireWrite('importar respaldo')) { e.target.value = ""; return; } 
         let f = e.target.files[0]; 
         if(!f) return; 
         let r = new FileReader(); 
@@ -5487,7 +5701,9 @@
         XLSX.utils.book_append_sheet(wb, wsX, "Remitos_Mixtos"); 
         XLSX.writeFile(wb, `logitrack_export_${new Date().toISOString().slice(0,19)}.xlsx`); 
     }
-    function eliminarTodosLosDatos() { 
+    function eliminarTodosLosDatos() {
+        if (!ltAuthRequireWrite('eliminar todos los datos')) return;
+        if (!ltAuthCanDelete()) { try { mostrarToast('Sin permiso de eliminación.', true); } catch(e) {} return; }
         if(confirm("¿ELIMINAR TODOS LOS DATOS? Esta acción es irreversible.")) { 
             baseFletes = []; 
             autorizacionesMeta = {}; 
@@ -5770,9 +5986,9 @@
                     <td>
                         <div class="acciones-cell">
                             <button type="button" class="btn-icon ver" title="Ver todos los RTOs (${row.cantRto})" onclick="verDetalleAutorizacion('${authEscaped}')"><i class="fas fa-eye"></i></button>
-                            <button type="button" class="btn-icon edit" title="Editar" onclick="editarAutorizacion('${authEscaped}')"><i class="fas fa-pen"></i></button>
-                            <button type="button" class="btn-icon print" title="Comprobante" onclick="generarComprobante('${authEscaped}')"><i class="fas fa-print"></i></button>
-                            <button type="button" class="btn-icon del" title="Eliminar" onclick="eliminarAutorizacion('${authEscaped}')"><i class="fas fa-trash"></i></button>
+                            ${ltAuthIsReadOnly() ? '' : `<button type="button" class="btn-icon edit" title="Editar" onclick="editarAutorizacion('${authEscaped}')"><i class="fas fa-pen"></i></button>`}
+                            <button type="button" class="btn-icon print" title="Comprobante / exportar" onclick="generarComprobante('${authEscaped}')"><i class="fas fa-print"></i></button>
+                            ${ltAuthIsReadOnly() ? '' : `<button type="button" class="btn-icon del" title="Eliminar" onclick="eliminarAutorizacion('${authEscaped}')"><i class="fas fa-trash"></i></button>`}
                         </div>
                     </td>
                 </tr>`;
@@ -5812,6 +6028,7 @@
 
         // ---------- Modal elección ----------
         abrirModalEleccion() {
+            if (!ltAuthRequireWrite("abrir carga asistida")) return;
             const m = document.getElementById("modalEleccionCarga");
             if (m) m.classList.add("mostrar");
         },
@@ -5820,6 +6037,7 @@
             if (m) m.classList.remove("mostrar");
         },
         elegirManual() {
+            if (!ltAuthRequireWrite("carga manual")) return;
             this.cerrarModalEleccion();
             const rows = document.querySelectorAll("#tbodyRemitos tr");
             if (rows.length) {
@@ -5829,6 +6047,7 @@
             mostrarToast("Carga manual: completá los RTOs en el formulario");
         },
         elegirExcel() {
+            if (!ltAuthRequireWrite("carga por Excel")) return;
             this.cerrarModalEleccion();
             const picker = document.getElementById("ca_filePicker");
             if (picker) {
@@ -6246,6 +6465,7 @@
 
         // ---------- Volcar al formulario ----------
         volcarAlFormulario() {
+            if (!ltAuthRequireWrite('cargar RTOs desde Excel')) return;
             const unidad = document.getElementById("ca_unidad")?.value || "SPERMAT S.A.S - SAMI";
             const authAuto = document.getElementById("ca_autorizacion")?.value.trim() || "";
             const transpPopup = document.getElementById("ca_transportista")?.value.trim() || "";
@@ -6625,6 +6845,12 @@
       document.querySelectorAll(".sidebar-menu-nav button[data-panel]").forEach(btn => {
         btn.addEventListener("click", () => {
           const id = btn.getAttribute("data-panel");
+          if (id === "panel-carga" && typeof ltAuthIsReadOnly === "function" && ltAuthIsReadOnly()) {
+            try { mostrarToast("Perfil Visualización: sin acceso a carga o ingreso de datos", true); } catch (e) {
+              alert("Perfil Visualización: sin acceso a carga o ingreso de datos");
+            }
+            return;
+          }
           document.querySelectorAll(".sidebar-menu-nav button").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           document.querySelectorAll(".sidebar-panel").forEach(p => p.classList.remove("active"));
@@ -6801,6 +7027,7 @@
     }
 
     window.onload = function() {
+        try { ltApplyReadOnlyUI(); } catch (e) {}
         inicializarModal();
         cargarStorage();
         CargaAsistida.init();
@@ -7022,6 +7249,7 @@
         initSidebarResize();
         initFiltrosMain();
         initStickySave();
+        try { ltApplyReadOnlyUI(); } catch (e) {}
         window.ordenarTabla = ordenarTabla;
         window.editarAutorizacion = editarAutorizacion;
         window.eliminarAutorizacion = eliminarAutorizacion;
@@ -7038,6 +7266,90 @@
         window.eliminarVersionLD = eliminarVersionLD;
         window.setFiltroRapido = setFiltroRapido;
     };
-    </script>
+    
+/* ── Bloqueo global de subida/importación en modo visualización ── */
+(function () {
+  function ltBlockFileInput(e) {
+    if (typeof ltAuthIsReadOnly === 'function' && ltAuthIsReadOnly()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { e.target.value = ''; } catch (err) {}
+      if (typeof ltAuthRequireWrite === 'function') {
+        ltAuthRequireWrite('importar o subir archivos');
+      } else {
+        try { alert('Perfil Visualización: no se permite importar ni subir archivos.'); } catch (err) {}
+      }
+      return false;
+    }
+  }
+  function ltLockAllFileInputs() {
+    if (typeof ltAuthIsReadOnly !== 'function' || !ltAuthIsReadOnly()) return;
+    document.querySelectorAll('input[type="file"]').forEach(function (inp) {
+      inp.disabled = true;
+      inp.setAttribute('aria-disabled', 'true');
+      inp.style.display = 'none';
+      try { inp.value = ''; } catch (e) {}
+      inp.onchange = null;
+      inp.onclick = function (ev) { ev.preventDefault(); return false; };
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) {
+      ltBlockFileInput(e);
+    }
+  }, true);
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.matches && t.matches('input[type="file"]')) {
+      if (typeof ltAuthIsReadOnly === 'function' && ltAuthIsReadOnly()) {
+        e.preventDefault(); e.stopPropagation();
+        ltAuthRequireWrite && ltAuthRequireWrite('subir archivos');
+      }
+    }
+    // labels that trigger file inputs
+    if (t.closest) {
+      const lab = t.closest('label');
+      if (lab && lab.htmlFor) {
+        const inp = document.getElementById(lab.htmlFor);
+        if (inp && inp.type === 'file' && typeof ltAuthIsReadOnly === 'function' && ltAuthIsReadOnly()) {
+          e.preventDefault(); e.stopPropagation();
+          ltAuthRequireWrite && ltAuthRequireWrite('subir archivos');
+        }
+      }
+    }
+  }, true);
+  document.addEventListener('dragover', function (e) {
+    if (typeof ltAuthIsReadOnly === 'function' && ltAuthIsReadOnly()) {
+      /* no bloquear todo drag, solo drop de archivos */
+    }
+  }, true);
+  document.addEventListener('drop', function (e) {
+    if (typeof ltAuthIsReadOnly === 'function' && ltAuthIsReadOnly()) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        e.preventDefault(); e.stopPropagation();
+        ltAuthRequireWrite && ltAuthRequireWrite('soltar archivos para importar');
+      }
+    }
+  }, true);
+  // re-lock after UI applies
+  if (typeof ltApplyReadOnlyUI === 'function') {
+    const _origApply_lt = ltApplyReadOnlyUI;
+    window.ltApplyReadOnlyUI = function () {
+      _origApply_lt();
+      try { ltLockAllFileInputs(); } catch (e) {}
+    };
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(ltLockAllFileInputs, 50);
+      setTimeout(ltLockAllFileInputs, 500);
+    });
+  } else {
+    setTimeout(ltLockAllFileInputs, 50);
+    setTimeout(ltLockAllFileInputs, 500);
+  }
+})();
+</script>
 </body>
 </html>

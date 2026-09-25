@@ -857,9 +857,10 @@ body.role-admin [data-requires-delete] { opacity: 1 !important; pointer-events: 
   margin-left: 4px;
   letter-spacing: 0.3px;
 }
-/* El perfil consulta ve todas las cards pero sin edición */
+/* Perfil consulta: solo visualización + exportación. Sin carga, ingreso ni modificación. */
 body.role-consulta .btn-eliminar-manual,
 body.role-consulta .btn-alias-del,
+body.role-consulta .btn-alias-add,
 body.role-consulta [data-requires-delete],
 body.role-consulta #btnModalAgregarManual,
 body.role-consulta #btnGuardarSemana,
@@ -868,8 +869,62 @@ body.role-consulta #btnTrashEmpty,
 body.role-consulta #btnTrashRestoreSelected,
 body.role-consulta #btnTrashPurgeSelected,
 body.role-consulta #btnRestore,
-body.role-consulta #btnDeleteAuth {
+body.role-consulta #btnDeleteAuth,
+body.role-consulta #btnPapelera,
+body.role-consulta #btnAliasAdd,
+body.role-consulta #aliasDesde,
+body.role-consulta #aliasHasta,
+body.role-consulta #aliasesPanel .alias-row:has(#btnAliasAdd),
+body.role-consulta #aliasesPanel .alias-row input,
+body.role-consulta #btnDoRestorePick,
+body.role-consulta #inputRestoreBackup {
   display: none !important;
+}
+/* Cards de operación: el perfil consulta PUEDE ingresar a todas (modo visualización).
+   La restricción de no editar/cargar se aplica DENTRO de cada módulo. */
+body.role-consulta .card[data-perm="operacion"],
+body.role-consulta a.card.card-comprobantes,
+body.role-consulta a.card.card-fletes,
+body.role-consulta a.card.card-logitrack,
+body.role-consulta a.card.card-cortes,
+body.role-consulta a.card.card-tarifarios {
+  opacity: 1;
+  pointer-events: auto;
+  filter: none;
+  cursor: pointer;
+  position: relative;
+}
+body.role-consulta .card[data-perm="operacion"]::after,
+body.role-consulta a.card.card-comprobantes::after,
+body.role-consulta a.card.card-fletes::after,
+body.role-consulta a.card.card-logitrack::after,
+body.role-consulta a.card.card-cortes::after,
+body.role-consulta a.card.card-tarifarios::after {
+  content: "Modo visualización";
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  color: #7c3aed;
+  background: rgba(255,255,255,0.92);
+  padding: 0.15rem 0.55rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  z-index: 2;
+  pointer-events: none;
+}
+html.dark body.role-consulta .card[data-perm="operacion"]:not(#cardTotalizador):not(#cardBusqueda)::after,
+html.dark body.role-consulta a.card.card-comprobantes::after,
+html.dark body.role-consulta a.card.card-fletes::after,
+html.dark body.role-consulta a.card.card-logitrack::after,
+html.dark body.role-consulta a.card.card-cortes::after,
+html.dark body.role-consulta a.card.card-tarifarios::after {
+  background: rgba(26, 35, 50, 0.92);
+  color: #c4b5fd;
 }
 body.role-consulta .card .badge::after {
   content: " · solo lectura";
@@ -879,7 +934,16 @@ body.role-consulta .card .badge::after {
 body.role-consulta .user-chip .role {
   color: #7c3aed !important;
 }
-  </style>
+  
+/* Bloqueo total de importación / subida de archivos para consulta */
+body.role-consulta input[type="file"],
+body.role-consulta #inputRestoreBackup,
+body.role-consulta #btnDoRestorePick,
+body.role-consulta label[for="inputRestoreBackup"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+</style>
 </head>
 <body class="auth-locked">
   <a class="skip-link" href="#mainContent">Saltar al contenido principal</a>
@@ -918,10 +982,9 @@ body.role-consulta .user-chip .role {
         </div>
       </form>
       <p class="auth-hint">
-        Usuario inicial: <code>admin</code> / <code>admin123</code><br>
-        El <strong>admin</strong> gestiona usuarios y permisos.<br>
-        El <strong>operador</strong> solo hace cargas y descargas (salvo que el admin le dé más acceso).<br>
-        El perfil <strong>Visualización y Consulta</strong> accede a todas las cards en modo solo lectura y puede descargar.
+        El <strong>administrador</strong> gestiona usuarios, permisos y política de contraseñas.<br>
+        El <strong>operador</strong> realiza cargas y descargas (según permisos asignados).<br>
+        El perfil <strong>Visualización y Consulta</strong> puede ver y exportar, sin modificar datos.
       </p>
     </div>
   </div>
@@ -979,7 +1042,10 @@ body.role-consulta .user-chip .role {
             <i data-lucide="key-round" aria-hidden="true"></i>
             <span class="btn-label" id="btnDeleteAuthLabel">Token</span>
           </button>
-          <button type="button" class="btn-logout btn-icon-action btn-logout-action" id="btnLogout" title="Cerrar sesión" aria-label="Cerrar sesión">
+          <button type="button" class="btn-logout btn-icon-action btn-logout-action" id="btnChangeMyPass" hidden title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña" style="margin-right:4px;">
+            <i data-lucide="key-round"></i>
+          </button>
+          <button type="button" class="btn-logout btn-icon-action" id="btnLogout" title="Cerrar sesión" aria-label="Cerrar sesión">
             <i data-lucide="log-out" aria-hidden="true"></i>
             <span class="btn-label">Salir</span>
           </button>
@@ -1373,18 +1439,66 @@ body.role-consulta .user-chip .role {
   </div>
 
   <!-- MODAL USUARIOS -->
+
+  <!-- Cambiar mi contraseña -->
+  <div class="modal-overlay" id="modalCambiarPass" role="dialog" aria-modal="true" aria-labelledby="modalCambiarPassTitle" aria-hidden="true">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <h2 id="modalCambiarPassTitle">Cambiar mi contraseña</h2>
+        <button type="button" class="modal-close" id="modalCambiarPassClose" aria-label="Cerrar">&times;</button>
+      </div>
+      <p id="cambiarPassMsg" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem;"></p>
+      <div class="users-form" style="display:grid;gap:10px;">
+        <label>Contraseña actual<input type="password" id="chgPassCurrent" autocomplete="current-password"></label>
+        <label>Nueva contraseña<input type="password" id="chgPassNew" autocomplete="new-password" placeholder="mín. 6 caracteres"></label>
+        <label>Confirmar nueva<input type="password" id="chgPassNew2" autocomplete="new-password"></label>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+        <button type="button" class="btn-outline" id="btnChgPassCancel">Cancelar</button>
+        <button type="button" class="btn-auth-primary" id="btnChgPassSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mostrar contraseña temporal (solo admin, una vez) -->
+  <div class="modal-overlay" id="modalShowTempPass" role="dialog" aria-modal="true" aria-labelledby="modalShowTempPassTitle" aria-hidden="true">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <h2 id="modalShowTempPassTitle">Contraseña temporal</h2>
+        <button type="button" class="modal-close" id="modalShowTempPassClose" aria-label="Cerrar">&times;</button>
+      </div>
+      <p style="font-size:0.85rem;margin-bottom:10px;">Usuario: <strong id="tempPassUser"></strong></p>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;">Copiá y entregá esta contraseña. No se podrá volver a ver (solo hasheada). El usuario deberá cambiarla si la política lo exige.</p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <code id="tempPassValue" style="flex:1;font-size:1.1rem;padding:10px 12px;border-radius:10px;background:var(--badge-bg);letter-spacing:0.04em;"></code>
+        <button type="button" class="btn-sm" id="btnCopyTempPass">Copiar</button>
+      </div>
+      <div class="modal-footer" style="margin-top:14px;text-align:right;">
+        <button type="button" class="btn-auth-primary" id="btnCloseTempPass">Entendido</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalUsuarios" role="dialog" aria-modal="true" aria-labelledby="modalUsuariosTitle" aria-hidden="true">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:640px;">
       <div class="modal-header">
         <h2 id="modalUsuariosTitle">Usuarios del portal</h2>
         <button type="button" class="modal-close" id="modalUsuariosClose" aria-label="Cerrar">&times;</button>
       </div>
       <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">
-        Alta, baja y cambio de contraseña. Las claves se guardan hasheadas (SHA-256) en este navegador.
+        Alta, baja, restablecer y ver contraseña temporal. Las claves se guardan hasheadas (SHA-256). La contraseña en claro solo se muestra al crear o restablecer.
       </p>
+      <div id="pwdPolicyBox" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 12px;margin-bottom:12px;border-radius:12px;border:1px solid var(--border,rgba(0,0,0,.1));background:var(--badge-bg,#e8f1f8);">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Caducidad de contraseña (días)</label>
+          <input type="number" id="pwdMaxDays" min="0" max="365" step="1" value="90" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border,rgba(0,0,0,.12));" title="0 = no caduca. Aplica a todos menos administrador.">
+        </div>
+        <button type="button" class="btn-sm" id="btnSavePwdPolicy" style="padding:8px 14px;border-radius:10px;background:var(--accent,#1976d2);color:#fff;border:none;font-weight:700;cursor:pointer;">Guardar política</button>
+        <p style="flex-basis:100%;font-size:0.7rem;color:var(--text-muted);margin:0;">Al vencer, el usuario (excepto admin) debe cambiar la contraseña al ingresar. 0 = sin caducidad.</p>
+      </div>
       <div style="overflow:auto;max-height:40vh;">
         <table class="users-table">
-          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th></th></tr></thead>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Contraseña</th><th></th></tr></thead>
           <tbody id="usersTableBody"></tbody>
         </table>
       </div>
@@ -1395,7 +1509,7 @@ body.role-consulta .user-chip .role {
         <label>Rol
           <select id="newUserRole">
             <option value="operador">Operador (cargas y descargas)</option>
-            <option value="consulta">Visualización y Consulta (ver y descargar)</option>
+            <option value="consulta">Visualización y Consulta (solo ver y exportar · sin carga ni modificación)</option>
             <option value="admin">Administrador (control total)</option>
           </select>
         </label>
@@ -1887,6 +2001,7 @@ body.role-consulta .user-chip .role {
       return {};
     }
     function guardarAliases(map) {
+      if (authIsReadOnly()) return;
       localStorage.setItem(ALIAS_KEY, JSON.stringify(map));
       invalidarCacheTotalizador();
     }
@@ -1944,6 +2059,7 @@ body.role-consulta .user-chip .role {
       invalidarCacheTotalizador();
     }
     function agregarManual(transportista, monto, semanaLunes, nroComprobante) {
+      if (!authRequireWrite('agregar registros manuales')) return;
       const lista = getManuales();
       const nro = String(nroComprobante || '').trim();
       lista.push({
@@ -2190,6 +2306,7 @@ body.role-consulta .user-chip .role {
       weekInput.value = `${year}-W${String(week).padStart(2, '0')}`;
     }
     function guardarSemanaElegida() {
+      if (!authRequireWrite('guardar la semana seleccionada')) return;
       const weekInput = document.getElementById('semanaInput');
       const val = weekInput?.value;
       const lunesStr = weekInputToLunes(val);
@@ -2746,6 +2863,7 @@ body.role-consulta .user-chip .role {
     }
     function imprimirModal() { window.print(); }
     function mostrarFormAgregarManual() {
+      if (!authRequireWrite('agregar registros manuales')) return;
       const container = document.getElementById('formAgregarManualContainer');
       container.style.display = container.style.display === 'none' ? 'block' : 'none';
       document.getElementById('manualTransportista').value = '';
@@ -2758,6 +2876,7 @@ body.role-consulta .user-chip .role {
       document.getElementById('manualTransportista').focus();
     }
     function guardarManualDesdeForm() {
+      if (!authRequireWrite('agregar registros manuales')) return;
       const transp = document.getElementById('manualTransportista').value.trim();
       const monto = parseFloat(document.getElementById('manualMonto').value);
       const nroComp = (document.getElementById('manualComprobante')?.value || '').trim();
@@ -5942,8 +6061,180 @@ body.role-consulta .user-chip .role {
      * ═══════════════════════════════════════════════════════════════════════ */
     const AUTH_USERS_KEY = 'uniber_auth_users_v1';
     const AUTH_SESSION_KEY = 'uniber_auth_session_v1';
+    const AUTH_PWD_POLICY_KEY = 'uniber_auth_pwd_policy_v1';
     const AUTH_SESSION_HOURS = 12;
     const AUTH_DEFAULT_ADMIN = { username: 'admin', password: 'admin123', name: 'Administrador', role: 'admin' };
+    /* last plain passwords shown to admin (session-only, not persisted long-term) */
+    const _authTempPassStore = {};
+
+    function authLoadPwdPolicy() {
+      try {
+        const raw = localStorage.getItem(AUTH_PWD_POLICY_KEY);
+        if (raw) {
+          const p = JSON.parse(raw);
+          const days = Math.max(0, Math.min(365, parseInt(p.maxDays, 10) || 0));
+          return { maxDays: days };
+        }
+      } catch (e) {}
+      return { maxDays: 90 };
+    }
+    function authSavePwdPolicy(policy) {
+      localStorage.setItem(AUTH_PWD_POLICY_KEY, JSON.stringify({
+        maxDays: Math.max(0, Math.min(365, parseInt(policy.maxDays, 10) || 0)),
+        updatedAt: new Date().toISOString()
+      }));
+    }
+    function authGenTempPassword(len) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      const n = Math.max(8, Math.min(16, len || 10));
+      let out = '';
+      try {
+        const arr = new Uint8Array(n);
+        if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(arr);
+        else for (let i = 0; i < n; i++) arr[i] = Math.floor(Math.random() * 256);
+        for (let i = 0; i < n; i++) out += chars[arr[i] % chars.length];
+      } catch (e) {
+        for (let i = 0; i < n; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return out;
+    }
+    function authPasswordExpired(user) {
+      if (!user || user.role === 'admin') return false;
+      const policy = authLoadPwdPolicy();
+      if (!policy.maxDays || policy.maxDays <= 0) return false;
+      const changed = user.passwordChangedAt || user.createdAt || user.updatedAt;
+      if (!changed) return true;
+      const t = new Date(changed).getTime();
+      if (!t || isNaN(t)) return true;
+      const ageDays = (Date.now() - t) / (1000 * 60 * 60 * 24);
+      return ageDays >= policy.maxDays;
+    }
+    function authMustChangePassword(user) {
+      if (!user || user.role === 'admin') return false;
+      if (user.mustChangePassword) return true;
+      return authPasswordExpired(user);
+    }
+    function authSetUserPassword(username, plain, opts) {
+      const list = authLoadUsers();
+      const idx = list.findIndex(x => x.username === username);
+      if (idx < 0) return false;
+      list[idx].passHash = authHash(plain);
+      list[idx].passwordChangedAt = new Date().toISOString();
+      list[idx].updatedAt = new Date().toISOString();
+      if (opts && opts.mustChange) list[idx].mustChangePassword = true;
+      else list[idx].mustChangePassword = false;
+      authSaveUsers(list);
+      return true;
+    }
+    function authShowTempPassModal(username, plain) {
+      _authTempPassStore[username] = plain;
+      const uEl = document.getElementById('tempPassUser');
+      const vEl = document.getElementById('tempPassValue');
+      if (uEl) uEl.textContent = username;
+      if (vEl) vEl.textContent = plain;
+      const m = document.getElementById('modalShowTempPass');
+      if (m) {
+        m.classList.add('show');
+        m.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    function authCloseTempPassModal() {
+      const m = document.getElementById('modalShowTempPass');
+      if (m) {
+        m.classList.remove('show');
+        m.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+    }
+    function authOpenChangePassModal(forced) {
+      const msg = document.getElementById('cambiarPassMsg');
+      if (msg) {
+        msg.textContent = forced
+          ? 'Tu contraseña caducó o fue restablecida. Debés definir una nueva para continuar.'
+          : 'Ingresá tu contraseña actual y la nueva (mín. 6 caracteres).';
+      }
+      ['chgPassCurrent', 'chgPassNew', 'chgPassNew2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const cur = document.getElementById('chgPassCurrent');
+      if (cur) cur.disabled = !!forced && false; // still require current unless we only have mustChange without knowing - keep required
+      const m = document.getElementById('modalCambiarPass');
+      if (m) {
+        m.classList.add('show');
+        m.setAttribute('aria-hidden', 'false');
+        m.dataset.forced = forced ? '1' : '0';
+        document.body.style.overflow = 'hidden';
+      }
+      setTimeout(() => document.getElementById('chgPassCurrent')?.focus(), 50);
+    }
+    function authCloseChangePassModal() {
+      const m = document.getElementById('modalCambiarPass');
+      if (m && m.dataset.forced === '1') {
+        alert('Debés cambiar la contraseña para continuar.');
+        return;
+      }
+      if (m) {
+        m.classList.remove('show');
+        m.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+    }
+    function authSubmitChangePass() {
+      const session = authGetSession();
+      if (!session) { alert('Sesión no válida'); return; }
+      const cur = document.getElementById('chgPassCurrent')?.value || '';
+      const n1 = document.getElementById('chgPassNew')?.value || '';
+      const n2 = document.getElementById('chgPassNew2')?.value || '';
+      if (n1.length < 6) { alert('Nueva contraseña: mínimo 6 caracteres.'); return; }
+      if (n1 !== n2) { alert('La confirmación no coincide.'); return; }
+      const users = authLoadUsers();
+      const u = users.find(x => x.username === session.username);
+      if (!u) { alert('Usuario no encontrado'); return; }
+      if (authHash(cur) !== u.passHash) { alert('Contraseña actual incorrecta.'); return; }
+      if (authHash(n1) === u.passHash) { alert('La nueva contraseña debe ser distinta a la actual.'); return; }
+      authSetUserPassword(session.username, n1, { mustChange: false });
+      const m = document.getElementById('modalCambiarPass');
+      if (m) {
+        m.dataset.forced = '0';
+        m.classList.remove('show');
+        m.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+      try { auditLog('modify', 'Contraseña cambiada por el usuario', { module: 'auth' }); } catch (e) {}
+      alert('Contraseña actualizada correctamente.');
+    }
+    function authAdminResetPassword(username) {
+      const session = authGetSession();
+      if (!session || session.role !== 'admin') {
+        alert('Solo el administrador puede restablecer contraseñas.');
+        return;
+      }
+      if (!username) return;
+      if (!confirm('¿Restablecer contraseña de "' + username + '"?\nSe generará una temporal y se mostrará una sola vez.')) return;
+      const plain = authGenTempPassword(10);
+      authSetUserPassword(username, plain, { mustChange: username !== 'admin' });
+      // admin reset of self: no mustChange
+      if (username === session.username || username === 'admin') {
+        const list = authLoadUsers();
+        const idx = list.findIndex(x => x.username === username);
+        if (idx >= 0) { list[idx].mustChangePassword = false; authSaveUsers(list); }
+      }
+      try { auditLog('modify', 'Contraseña restablecida: ' + username, { module: 'usuarios', meta: { username } }); } catch (e) {}
+      authShowTempPassModal(username, plain);
+      renderUsersTable();
+    }
+    function authAdminViewTempPass(username) {
+      const session = authGetSession();
+      if (!session || session.role !== 'admin') return;
+      const plain = _authTempPassStore[username];
+      if (plain) {
+        authShowTempPassModal(username, plain);
+      } else {
+        alert('No hay contraseña temporal en memoria para este usuario.\nSolo se muestra al crear o restablecer. Usá "Restablecer" para generar una nueva.');
+      }
+    }
 
     function authDefaultPerms(role) {
       if (role === 'admin') {
@@ -6057,6 +6348,20 @@ body.role-consulta .user-chip .role {
       if (!s) return false;
       if (s.role === 'admin') return true;
       return !!(s.perms && s.perms[perm]);
+    }
+    /** Perfil Visualización/Consulta: solo ver y exportar. Sin carga ni modificación. */
+    function authIsReadOnly() {
+      const s = authGetSession();
+      if (!s) return true;
+      if (s.role === 'consulta') return true;
+      return !!(s.perms && s.perms.soloLectura);
+    }
+    function authRequireWrite(actionLabel) {
+      if (!authIsReadOnly()) return true;
+      const label = actionLabel || 'modificar datos';
+      try { ariaAnnounce('Perfil solo lectura: no se permite ' + label + '.', true); } catch (e) {}
+      alert('Perfil Visualización y Consulta: solo podés ver y exportar.\nNo está permitido ' + label + '.');
+      return false;
     }
 
     /* --- Token de eliminación --- */
@@ -6246,8 +6551,18 @@ body.role-consulta .user-chip .role {
         return { ok: false, error: 'Usuario o contraseña incorrectos.' };
       }
       const session = authSetSession(found);
+      session.mustChangePassword = authMustChangePassword(found);
+      try {
+        // persist flag on session object already stored
+        const raw = sessionStorage.getItem(AUTH_SESSION_KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          s.mustChangePassword = !!session.mustChangePassword;
+          sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(s));
+        }
+      } catch (e) {}
       try { auditLog('login', 'Ingreso al portal', { username: found.username, name: found.name || found.username, module: 'auth' }); } catch (e) {}
-      return { ok: true, session: session };
+      return { ok: true, session: session, mustChangePassword: !!session.mustChangePassword };
     }
     function authLogout() {
       try { auditLog('logout', 'Cierre de sesión', { module: 'auth' }); } catch (e) {}
@@ -6258,6 +6573,10 @@ body.role-consulta .user-chip .role {
     function authBlockClick(e) {
       e.preventDefault();
       e.stopPropagation();
+      if (typeof authIsReadOnly === 'function' && authIsReadOnly()) {
+        alert('Perfil Visualización y Consulta: solo podés ver y exportar.\nNo tenés acceso a módulos de carga, ingreso o modificación.');
+        return;
+      }
       alert('No tenés permiso para este módulo. Pedile acceso al administrador.');
     }
     function applyPermissionsToUI(session) {
@@ -6275,35 +6594,49 @@ body.role-consulta .user-chip .role {
           ? authDefaultPerms('consulta')
           : authNormalizePerms('operador', session.perms);
 
+      const isConsulta = session.role === 'consulta' || !!(perms && perms.soloLectura);
+      /* Consulta puede INGRESAR a todas las cards (operación e información).
+         La restricción de no editar/cargar se aplica DENTRO de cada módulo. */
       document.querySelectorAll('.card[data-perm]').forEach(card => {
         const need = card.getAttribute('data-perm');
-        const allowed = need === 'operacion' ? perms.operacion : perms.informacion;
+        const allowed = need === 'operacion' ? !!perms.operacion : !!perms.informacion;
         card.classList.toggle('perm-denied', !allowed);
         card.removeEventListener('click', authBlockClick, true);
         if (!allowed) {
           card.setAttribute('aria-disabled', 'true');
           card.addEventListener('click', authBlockClick, true);
+          card.setAttribute('title', 'Sin permiso para este módulo');
         } else {
           card.removeAttribute('aria-disabled');
+          if (isConsulta) {
+            card.setAttribute('title', 'Modo visualización: podés ver y exportar, no cargar ni modificar');
+          } else {
+            card.removeAttribute('title');
+          }
         }
       });
 
       const exportAllowed = !!perms.exportar;
       ['btnBackup', 'btnModalExcel', 'btnModalPDF', 'btnModalImagen',
        'btnModalDesglose', 'btnModalDesgloseImg', 'btnInformeExcel', 'btnInformePDF',
-       'btnInformeImagen', 'btnInformePptx', 'btnBusquedaExcel'].forEach(id => {
+       'btnInformeImagen', 'btnInformePptx', 'btnBusquedaExcel', 'btnInformePantalla',
+       'btnInformeClipboard', 'btnModalImprimir'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = exportAllowed ? '' : 'none';
         el.disabled = !exportAllowed;
       });
 
-      /* Perfil consulta: NO restaurar, NO token */
-      if (session.role === 'consulta') {
+      /* Perfil consulta: solo ver + exportar. Sin restaurar, token, papelera ni carga. */
+      if (isConsulta) {
         const btnRestore = document.getElementById('btnRestore');
         if (btnRestore) btnRestore.style.display = 'none';
         const btnDeleteAuth = document.getElementById('btnDeleteAuth');
         if (btnDeleteAuth) btnDeleteAuth.hidden = true;
+        const btnTrash = document.getElementById('btnPapelera');
+        if (btnTrash) btnTrash.hidden = true;
+        const btnDoRestore = document.getElementById('btnDoRestorePick');
+        if (btnDoRestore) btnDoRestore.style.display = 'none';
       } else if (session.role === 'admin') {
         const btnDeleteAuth = document.getElementById('btnDeleteAuth');
         if (btnDeleteAuth) btnDeleteAuth.hidden = false;
@@ -6316,7 +6649,7 @@ body.role-consulta .user-chip .role {
       const btnAria = document.getElementById('btnAriaValidation');
       if (btnAria) btnAria.hidden = session.role !== 'admin';
       const btnTrash = document.getElementById('btnPapelera');
-      if (btnTrash) btnTrash.hidden = !session;
+      if (btnTrash && !isConsulta) btnTrash.hidden = !session;
 
       refreshLucideIcons();
     }
@@ -6340,10 +6673,22 @@ body.role-consulta .user-chip .role {
         if (roleEl) roleEl.textContent =
           session.role === 'admin' ? 'admin' :
           session.role === 'consulta' ? 'consulta' : 'operador';
+        const btnChg = document.getElementById('btnChangeMyPass');
+        if (btnChg) btnChg.hidden = false;
         applyPermissionsToUI(session);
         applyDeleteAuthUI();
         try { if (typeof refreshAll === 'function') refreshAll(); } catch (e) {}
         ariaAnnounce('Sesión iniciada como ' + (session.name || session.username) + ' (' + session.role + ')');
+        // Forzar cambio de contraseña si corresponde (no admin)
+        try {
+          if (session.role !== 'admin') {
+            const users = authLoadUsers();
+            const u = users.find(x => x.username === session.username);
+            if (u && authMustChangePassword(u)) {
+              setTimeout(() => authOpenChangePassModal(true), 350);
+            }
+          }
+        } catch (e) {}
       } else {
         body.classList.add('auth-locked');
         body.classList.remove('auth-ok', 'role-admin', 'role-operador', 'role-consulta');
@@ -6397,66 +6742,80 @@ body.role-consulta .user-chip .role {
       const tbody = document.getElementById('usersTableBody');
       if (!tbody) return;
       const users = authLoadUsers();
-      const session = authGetSession();
+      const policy = authLoadPwdPolicy();
+      const daysEl = document.getElementById('pwdMaxDays');
+      if (daysEl) daysEl.value = policy.maxDays;
       tbody.innerHTML = users.map(u => {
-        const p = authNormalizePerms(u.role, u.perms);
-        const permSummary = u.role === 'admin'
-          ? '<span class="role-badge-admin">FULL</span>'
-          : u.role === 'consulta'
-            ? '<span class="role-badge-consulta">SOLO LECTURA</span>'
-            : [p.operacion ? 'Cargas' : null, p.exportar ? 'Descargas' : null, p.informacion ? 'Info' : null].filter(Boolean).join(' · ') || 'Sin permisos';
-        const canDel = session && session.role === 'admin' && u.username !== 'admin';
-        const canEdit = session && session.role === 'admin';
-        const rolLabel = u.role === 'admin' ? 'Admin' : u.role === 'consulta' ? 'Visualización' : 'Operador';
-        return '<tr><td><strong>' + authEsc(u.username) + '</strong></td><td>' + authEsc(u.name || '') +
-          '</td><td>' + rolLabel +
-          '<br><span style="font-size:0.68rem;color:var(--text-muted)">' + permSummary + '</span></td><td style="white-space:nowrap">' +
-          (canEdit ? '<button type="button" class="btn-user-del" style="color:#0055A4" data-edit="' + authEsc(u.username) + '">Editar</button> ' : '') +
-          (canDel ? '<button type="button" class="btn-user-del" data-user="' + authEsc(u.username) + '">Eliminar</button>' : (u.username === 'admin' ? '—' : '')) +
-          '</td></tr>';
-      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Sin usuarios</td></tr>';
-      tbody.querySelectorAll('[data-user]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const login = btn.getAttribute('data-user');
-          if (!confirm('¿Eliminar usuario “' + login + '”?')) return;
-          const prevUsers = authLoadUsers();
-          const victim = prevUsers.find(x => x.username === login);
-          try {
-            const snap = JSON.stringify(prevUsers);
-            const s = authGetSession();
-            const item = {
-              id: 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
-              key: AUTH_USERS_KEY,
-              label: 'Usuario eliminado: ' + login,
-              module: 'usuarios',
-              raw: snap,
-              bytes: snap.length,
-              deletedAt: new Date().toISOString(),
-              deletedBy: s ? s.username : '—',
-              deletedByName: s ? (s.name || s.username) : '—',
-              meta: { username: login, note: 'Snapshot completo de usuarios antes del borrado' }
-            };
-            const tl = trashLoad(); tl.unshift(item); trashSave(tl);
-            auditLog('delete', 'Usuario: ' + login, { module: 'usuarios', meta: { username: login } });
-          } catch (e) {}
-          authSaveUsers(prevUsers.filter(x => x.username !== login));
-          renderUsersTable();
-        });
-      });
+        const roleLabel = u.role === 'admin' ? 'Admin' : u.role === 'consulta' ? 'Consulta' : 'Operador';
+        const exp = authPasswordExpired(u);
+        const must = !!u.mustChangePassword;
+        let pwdStatus = 'OK';
+        if (u.role === 'admin') pwdStatus = 'Sin caducidad';
+        else if (must) pwdStatus = 'Cambio obligatorio';
+        else if (exp) pwdStatus = 'Caducada';
+        else if (policy.maxDays > 0 && (u.passwordChangedAt || u.createdAt)) {
+          const t = new Date(u.passwordChangedAt || u.createdAt).getTime();
+          const left = policy.maxDays - Math.floor((Date.now() - t) / 86400000);
+          pwdStatus = left <= 0 ? 'Caducada' : (left + ' d restantes');
+        }
+        const hasTemp = !!_authTempPassStore[u.username];
+        return `<tr>
+          <td><code>${authEsc(u.username)}</code></td>
+          <td>${authEsc(u.name || '')}</td>
+          <td>${roleLabel}</td>
+          <td style="font-size:0.72rem;${(exp||must) && u.role !== 'admin' ? 'color:#b91c1c;font-weight:700;' : ''}">${pwdStatus}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn-sm" data-edit="${authEsc(u.username)}" title="Editar">Editar</button>
+            <button type="button" class="btn-sm" data-reset-pass="${authEsc(u.username)}" title="Restablecer contraseña" style="background:#7c3aed;color:#fff;border:none;">Reset</button>
+            <button type="button" class="btn-sm" data-view-pass="${authEsc(u.username)}" title="Ver contraseña temporal (si está en memoria)" ${hasTemp ? '' : 'disabled style="opacity:.45"'}>Ver</button>
+            ${u.username === 'admin' ? '' : `<button type="button" class="btn-sm btn-danger" data-del="${authEsc(u.username)}" title="Eliminar">×</button>`}
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Sin usuarios</td></tr>';
+
       tbody.querySelectorAll('[data-edit]').forEach(btn => {
         btn.addEventListener('click', () => {
           const login = btn.getAttribute('data-edit');
           const u = authLoadUsers().find(x => x.username === login);
           if (!u) return;
-          document.getElementById('newUserLogin').value = u.username;
-          document.getElementById('newUserLogin').readOnly = true;
+          const loginEl = document.getElementById('newUserLogin');
+          if (loginEl) { loginEl.value = u.username; loginEl.readOnly = true; }
           document.getElementById('newUserName').value = u.name || '';
           document.getElementById('newUserPass').value = '';
           document.getElementById('newUserRole').value = u.role === 'admin' ? 'admin' : u.role === 'consulta' ? 'consulta' : 'operador';
           authWritePermsToForm(u.role, u.perms);
         });
       });
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const login = btn.getAttribute('data-del');
+          if (!login || login === 'admin') return;
+          if (!confirm('¿Eliminar usuario "' + login + '"?')) return;
+          const prevUsers = authLoadUsers();
+          try {
+            if (typeof trashPush === 'function') {
+              trashPush({
+                key: AUTH_USERS_KEY,
+                label: 'Usuario ' + login,
+                module: 'usuarios',
+                data: prevUsers.find(x => x.username === login),
+                meta: { username: login, note: 'Snapshot antes del borrado' }
+              });
+            }
+            auditLog('delete', 'Usuario: ' + login, { module: 'usuarios', meta: { username: login } });
+          } catch (e) {}
+          authSaveUsers(prevUsers.filter(x => x.username !== login));
+          renderUsersTable();
+        });
+      });
+      tbody.querySelectorAll('[data-reset-pass]').forEach(btn => {
+        btn.addEventListener('click', () => authAdminResetPassword(btn.getAttribute('data-reset-pass')));
+      });
+      tbody.querySelectorAll('[data-view-pass]').forEach(btn => {
+        btn.addEventListener('click', () => authAdminViewTempPass(btn.getAttribute('data-view-pass')));
+      });
     }
+    
     function abrirModalUsuarios() {
       const session = authGetSession();
       if (!session || session.role !== 'admin') {
@@ -6509,11 +6868,16 @@ body.role-consulta .user-chip .role {
         perms: authNormalizePerms(role, perms),
         passHash: pass ? authHash(pass) : (prev ? prev.passHash : ''),
         createdAt: prev ? prev.createdAt : new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        passwordChangedAt: pass ? new Date().toISOString() : (prev && prev.passwordChangedAt) ? prev.passwordChangedAt : (prev ? prev.createdAt : new Date().toISOString()),
+        mustChangePassword: pass ? (role !== 'admin') : (prev ? !!prev.mustChangePassword : false)
       };
       if (!entry.passHash) { alert('Contraseña obligatoria para usuarios nuevos.'); return; }
       if (idx >= 0) list[idx] = entry; else list.push(entry);
       authSaveUsers(list);
+      if (pass) {
+        _authTempPassStore[login] = pass;
+      }
       if (loginEl) { loginEl.readOnly = false; loginEl.value = ''; }
       document.getElementById('newUserName').value = '';
       document.getElementById('newUserPass').value = '';
@@ -6525,7 +6889,11 @@ body.role-consulta .user-chip .role {
       try {
         auditLog('modify', (idx >= 0 ? 'Usuario actualizado: ' : 'Usuario creado: ') + login, { module: 'usuarios', meta: { username: login, role: role } });
       } catch (e) {}
-      alert(idx >= 0 ? 'Usuario actualizado.' : 'Usuario creado.');
+      if (pass) {
+        authShowTempPassModal(login, pass);
+      } else {
+        alert(idx >= 0 ? 'Usuario actualizado.' : 'Usuario creado.');
+      }
     }
     function initAuthUI() {
       authEnsureSeed();
@@ -6549,6 +6917,34 @@ body.role-consulta .user-chip .role {
         if (confirm('¿Cerrar sesión?')) authLogout();
       });
       document.getElementById('btnUsersAdmin')?.addEventListener('click', abrirModalUsuarios);
+      document.getElementById('btnChangeMyPass')?.addEventListener('click', () => authOpenChangePassModal(false));
+      document.getElementById('modalCambiarPassClose')?.addEventListener('click', authCloseChangePassModal);
+      document.getElementById('btnChgPassCancel')?.addEventListener('click', authCloseChangePassModal);
+      document.getElementById('btnChgPassSave')?.addEventListener('click', authSubmitChangePass);
+      document.getElementById('modalCambiarPass')?.addEventListener('click', function (e) {
+        if (e.target === this) authCloseChangePassModal();
+      });
+      document.getElementById('modalShowTempPassClose')?.addEventListener('click', authCloseTempPassModal);
+      document.getElementById('btnCloseTempPass')?.addEventListener('click', authCloseTempPassModal);
+      document.getElementById('btnCopyTempPass')?.addEventListener('click', () => {
+        const v = document.getElementById('tempPassValue')?.textContent || '';
+        if (!v) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(v).then(() => alert('Copiada al portapapeles')).catch(() => alert(v));
+        } else {
+          alert(v);
+        }
+      });
+      document.getElementById('btnSavePwdPolicy')?.addEventListener('click', () => {
+        const session = authGetSession();
+        if (!session || session.role !== 'admin') { alert('Solo el administrador puede cambiar la política.'); return; }
+        const days = parseInt(document.getElementById('pwdMaxDays')?.value, 10);
+        if (isNaN(days) || days < 0 || days > 365) { alert('Días: entre 0 y 365 (0 = sin caducidad).'); return; }
+        authSavePwdPolicy({ maxDays: days });
+        try { auditLog('modify', 'Política de contraseñas: ' + days + ' días', { module: 'usuarios' }); } catch (e) {}
+        alert(days === 0 ? 'Política guardada: las contraseñas no caducan.' : 'Política guardada: caducan cada ' + days + ' días (excepto admin).');
+        renderUsersTable();
+      });
       document.getElementById('btnAuditoria')?.addEventListener('click', abrirModalAuditoria);
       document.getElementById('btnAriaValidation')?.addEventListener('click', abrirModalAriaValidation);
       document.getElementById('modalAriaValidationClose')?.addEventListener('click', cerrarModalAriaValidation);
@@ -6756,6 +7152,7 @@ body.role-consulta .user-chip .role {
       if (panel.classList.contains('show')) renderAliasesPanel();
     });
     document.getElementById('btnAliasAdd')?.addEventListener('click', function() {
+      if (!authRequireWrite('agregar aliases')) return;
       const desde = document.getElementById('aliasDesde').value.trim().toUpperCase();
       const hasta = document.getElementById('aliasHasta').value.trim().toUpperCase();
       if (!desde || !hasta) { alert('Completá variante y canónico'); return; }
@@ -6830,8 +7227,14 @@ body.role-consulta .user-chip .role {
         }
         return;
       }
-      const map = { '0': 'dashboard-gerencial-v8.html', '1': 'comprobantes.html', '2': 'fletes-pro.html', '3': 'logitrack.html', '4': 'reportes.html', '5': 'Cortes_Facturas.html', '7': 'tarifarios.html' };
-      if (map[e.key]) { e.preventDefault(); window.location.href = map[e.key]; }
+      const mapView = { '0': 'dashboard-gerencial-v8.html', '4': 'reportes.html' };
+      const mapLoad = { '1': 'comprobantes.html', '2': 'fletes-pro.html', '3': 'logitrack.html', '5': 'Cortes_Facturas.html', '7': 'tarifarios.html' };
+      if (mapView[e.key]) { e.preventDefault(); window.location.href = mapView[e.key]; }
+      if (mapLoad[e.key]) {
+        e.preventDefault();
+        /* Consulta puede ingresar a todos los módulos; el modo solo lectura se aplica dentro de cada uno */
+        window.location.href = mapLoad[e.key];
+      }
       if (e.key === '6') { e.preventDefault(); abrirModalTotalizador(); }
       if (e.key === '8' || e.key === '/') { e.preventDefault(); abrirModalBusqueda(); }
       if (e.key === '9') { e.preventDefault(); abrirModalInformeMensual(); }
@@ -7009,6 +7412,39 @@ body.role-consulta .user-chip .role {
 
     /* Init chips de tipos de búsqueda */
     syncSearchTypeChips();
-  </script>
+  
+/* ── Portal: bloqueo global de importación para perfil consulta ── */
+(function () {
+  function portalBlockImports(e) {
+    if (typeof authIsReadOnly === 'function' && authIsReadOnly()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try { if (e.target && e.target.value !== undefined) e.target.value = ''; } catch (err) {}
+      if (typeof authRequireWrite === 'function') authRequireWrite('importar o subir archivos');
+      else alert('Perfil Visualización: no se permite importar ni subir archivos.');
+      return false;
+    }
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.matches && e.target.matches('input[type="file"]')) portalBlockImports(e);
+  }, true);
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.matches && t.matches('input[type="file"]') && typeof authIsReadOnly === 'function' && authIsReadOnly()) {
+      e.preventDefault(); e.stopPropagation();
+      portalBlockImports(e);
+    }
+  }, true);
+  document.addEventListener('drop', function (e) {
+    if (typeof authIsReadOnly === 'function' && authIsReadOnly()) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        e.preventDefault(); e.stopPropagation();
+        if (typeof authRequireWrite === 'function') authRequireWrite('soltar archivos para importar');
+      }
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>
