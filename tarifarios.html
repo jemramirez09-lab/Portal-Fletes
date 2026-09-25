@@ -1,0 +1,2668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tarifas - Transporte Unificado</title>
+    <!-- Librerías externas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        /* ========== ESTILOS (con variables CSS para modo oscuro) ========== */
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        :root {
+            --bg-body: #f4f7fb;
+            --bg-container: #ffffff;
+            --text-primary: #1a2b4a;
+            --text-secondary: #2c3e50;
+            --text-muted: #5e6f8d;
+            --border-color: #d0d7e2;
+            --bg-input: #fafcff;
+            --bg-selector: #f0f4f9;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            --header-border: #1a2b4a;
+            --result-bg: #eaf2fa;
+            --compare-bg: #f8f9fa;
+            --toast-info: #1a2b4a;
+            --toast-success: #2a7a4b;
+            --toast-warning: #b7950b;
+            --toast-error: #b22234;
+        }
+        [data-theme="dark"] {
+            --bg-body: #1a1a2e;
+            --bg-container: #2d2d44;
+            --text-primary: #e0e0e0;
+            --text-secondary: #c0c0d0;
+            --text-muted: #a0a0b0;
+            --border-color: #4a4a6a;
+            --bg-input: #3a3a5a;
+            --bg-selector: #3a3a5a;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            --header-border: #6a6a8a;
+            --result-bg: #2a2a4a;
+            --compare-bg: #3a3a5a;
+            --toast-info: #4a4a7a;
+            --toast-success: #2a7a4b;
+            --toast-warning: #b7950b;
+            --toast-error: #b22234;
+        }
+        body {
+            background: var(--bg-body);
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: var(--bg-container);
+            padding: 25px 30px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+        }
+        .main-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            border-bottom: 3px solid var(--header-border);
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .logo-area svg { flex-shrink: 0; }
+        .logo-area h1 {
+            font-size: 26px;
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.1;
+        }
+        .logo-area .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 400;
+            display: block;
+            margin-top: 2px;
+        }
+        .periodo-header {
+            font-size: 14px;
+            background: #d4edda;
+            padding: 4px 16px;
+            border-radius: 30px;
+            color: #155724;
+            font-weight: 600;
+            display: inline-block;
+            border: 1px solid #28a745;
+            margin-top: 4px;
+        }
+        [data-theme="dark"] .periodo-header {
+            background: #2a4a3a;
+            color: #8fdb9a;
+            border-color: #28a745;
+        }
+        .transport-selector {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-selector);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+        }
+        .transport-selector label {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .transport-selector select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            font-size: 14px;
+            min-width: 180px;
+            color: var(--text-secondary);
+        }
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-end;
+            margin: 20px 0;
+        }
+        .flex-row .field {
+            flex: 1 1 180px;
+            min-width: 150px;
+        }
+        .field label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .field input, .field select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 15px;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            transition: 0.2s;
+        }
+        .field input:focus, .field select:focus {
+            border-color: var(--header-border);
+            outline: none;
+            background: var(--bg-container);
+            box-shadow: 0 0 0 3px rgba(26, 43, 74, 0.15);
+        }
+        .btn {
+            background: var(--header-border);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:hover { opacity: 0.85; transform: scale(1.02); }
+        .btn-outline {
+            background: transparent;
+            color: var(--header-border);
+            border: 2px solid var(--header-border);
+        }
+        .btn-outline:hover { background: var(--bg-selector); }
+        .btn-sm { padding: 4px 12px; font-size: 13px; border-radius: 6px; }
+        .btn-add { background: #2a7a4b; color: white; }
+        .btn-add:hover { background: #1d5f38; }
+        .btn-del { background: #b22234; color: white; }
+        .btn-del:hover { background: #8b1a1c; }
+        .btn-copy { background: #0d6efd; color: white; }
+        .btn-copy:hover { background: #0a58ca; }
+        .btn-clean { background: #6c757d; color: white; }
+        .btn-clean:hover { background: #5a6268; }
+        .btn-export { background: #17a2b8; color: white; }
+        .btn-export:hover { background: #138496; }
+        .btn-import { background: #28a745; color: white; }
+        .btn-import:hover { background: #1e7e34; }
+        .btn-compare { background: #fd7e14; color: white; }
+        .btn-compare:hover { background: #e06b0a; }
+
+        .result-box {
+            background: var(--result-bg);
+            border-radius: 16px;
+            padding: 18px 22px;
+            margin: 20px 0;
+            border-left: 6px solid var(--header-border);
+        }
+        .result-box h3 { margin: 0 0 12px 0; color: var(--text-primary); }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .result-item {
+            background: var(--bg-container);
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+        .result-item .label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+        .result-item .value { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+        .result-item.costo-destacado {
+            background: #fff9e6;
+            border: 2px solid #f1c40f;
+            box-shadow: 0 4px 8px rgba(241,196,15,0.3);
+            transform: scale(1.02);
+        }
+        [data-theme="dark"] .result-item.costo-destacado {
+            background: #4a3a1a;
+            border-color: #f1c40f;
+        }
+        .result-item.costo-destacado .value { color: #b7950b; font-size: 24px; font-weight: 900; }
+        .result-item.total {
+            background: #e6f5e6;
+            border: 2px solid #28a745;
+        }
+        [data-theme="dark"] .result-item.total { background: #1a3a2a; }
+        .result-item.total .value { color: #004d00; font-size: 28px; display: inline-block; }
+        [data-theme="dark"] .result-item.total .value { color: #8fdb9a; }
+        .iva-nota {
+            font-size: 13px;
+            color: #1f4f2d;
+            background: #d4edda;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+        [data-theme="dark"] .iva-nota { background: #2a4a3a; color: #8fdb9a; }
+
+        .comparison-area {
+            margin-top: 18px;
+            border-top: 2px solid var(--border-color);
+            padding-top: 18px;
+        }
+        .comparison-display {
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 10px;
+            min-height: 45px;
+            background: var(--bg-selector);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .comparison-display .diff-ok {
+            color: #155724;
+            background: #d4edda;
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid #28a745;
+        }
+        [data-theme="dark"] .comparison-display .diff-ok {
+            background: #2a4a3a;
+            color: #8fdb9a;
+        }
+        .comparison-display .diff-error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid #dc3545;
+        }
+        [data-theme="dark"] .comparison-display .diff-error {
+            background: #4a2a2a;
+            color: #f8a0a0;
+        }
+        .comparison-display .diff-number { font-weight: 900; font-size: 20px; }
+
+        .admin-section {
+            margin-top: 40px;
+            border-top: 2px dashed var(--border-color);
+            padding-top: 25px;
+        }
+        .admin-section h2 {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            color: var(--text-primary);
+        }
+        .admin-section h2 small { font-size: 14px; font-weight: 400; color: var(--text-muted); }
+
+        .version-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: var(--bg-selector);
+            padding: 8px 16px;
+            border-radius: 30px;
+            margin-bottom: 15px;
+        }
+        .version-control select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            font-size: 14px;
+            min-width: 200px;
+            color: var(--text-secondary);
+        }
+
+        .filters-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: var(--bg-selector);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .filters-row .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            flex: 1 1 150px;
+        }
+        .filters-row .filter-group label {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .filters-row .filter-group input, .filters-row .filter-group select {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            font-size: 13px;
+            width: 100%;
+            min-width: 60px;
+            color: var(--text-secondary);
+        }
+        .filters-row .filter-group input[type="number"] { width: 80px; }
+
+        .table-wrap { overflow-x: auto; margin: 15px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            min-width: 700px;
+        }
+        th {
+            background: var(--header-border);
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        th:hover { opacity: 0.8; }
+        th .sort-indicator { font-size: 11px; margin-left: 4px; }
+        td {
+            padding: 6px 4px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        td input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 60px;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+        }
+        td input:focus { border-color: var(--header-border); outline: none; }
+        td input[type="number"] { -moz-appearance: textfield; }
+        td input[type="number"]::-webkit-outer-spin-button,
+        td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .file-upload {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-selector);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+        }
+        .file-upload input[type="file"] { max-width: 180px; color: var(--text-secondary); }
+        .footer-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+            align-items: center;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 380px;
+            width: 100%;
+        }
+        .toast {
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            animation: slideIn 0.4s ease;
+            border-left: 6px solid rgba(255,255,255,0.5);
+        }
+        .toast-info { background: var(--toast-info); }
+        .toast-success { background: var(--toast-success); }
+        .toast-warning { background: var(--toast-warning); }
+        .toast-error { background: var(--toast-error); }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .hidden-row { display: none !important; }
+
+        .periodo-actual {
+            background: #d4edda;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #155724;
+            border: 1px solid #28a745;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        [data-theme="dark"] .periodo-actual {
+            background: #2a4a3a;
+            color: #8fdb9a;
+            border-color: #28a745;
+        }
+
+        .compare-box {
+            background: var(--compare-bg);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border: 1px solid var(--border-color);
+        }
+        .compare-box .flex-row { margin: 0; }
+        .compare-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .compare-item {
+            background: var(--bg-container);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .compare-item .label { font-weight: 600; font-size: 13px; color: var(--text-secondary); }
+        .compare-item .value { font-size: 20px; font-weight: 700; }
+        .compare-item .value.positive { color: #28a745; }
+        .compare-item .value.negative { color: #dc3545; }
+        .compare-item .value.neutral { color: var(--text-muted); }
+
+        .compare-detail-table {
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .compare-detail-table table { min-width: 500px; font-size: 12px; }
+        .compare-detail-table th {
+            background: var(--header-border);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .compare-detail-table td { padding: 4px 6px; }
+        .diff-pos { color: #28a745; font-weight: 600; }
+        .diff-neg { color: #dc3545; font-weight: 600; }
+
+        .chart-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-selector);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .chart-container canvas { max-height: 280px; width: 100% !important; }
+        
+        .evo-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .evo-controls label { font-weight: 600; font-size: 13px; color: var(--text-secondary); }
+        .evo-controls select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            font-size: 13px;
+            min-width: 160px;
+        }
+        .evo-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .evo-kpi {
+            background: var(--bg-container);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+        .evo-kpi .lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .evo-kpi .val { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px; }
+        .evo-kpi .val.up { color: #28a745; }
+        .evo-kpi .val.down { color: #dc3545; }
+
+        .season-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 12px 0 16px;
+        }
+        .season-card {
+            background: var(--bg-container);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .season-card.peak {
+            border-color: #e67e22;
+            box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.25);
+        }
+        .season-card .season-icon { font-size: 22px; line-height: 1; }
+        .season-card .season-name {
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+        .season-card .season-months {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .season-card .season-val {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text-primary);
+        }
+        .season-card .season-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .season-insights {
+            background: var(--result-bg);
+            border-left: 5px solid var(--header-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.45;
+        }
+        .season-insights strong { color: var(--text-primary); }
+        .season-charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 800px) {
+            .season-charts-row { grid-template-columns: 1fr; }
+        }
+
+
+        .chart-container .chart-message {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 16px;
+            padding: 20px 0;
+        }
+
+        .dark-toggle {
+            background: var(--bg-selector);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dark-toggle:hover { background: var(--border-color); }
+        .portal-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-selector);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .portal-home:hover { background: var(--border-color); }
+        .btn-home-svg {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 30px;
+            border: none;
+            background: #0f766e;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .btn-home-svg:hover { background: #0d9488; transform: translateY(-1px); }
+        .btn-home-svg svg {
+            width: 18px; height: 18px; flex-shrink: 0;
+        }
+        .btn-home-svg .ext-ico { opacity: 0.85; font-size: 0.75rem; }
+        .nav-ext {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-selector);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .nav-ext:hover { background: var(--border-color); }
+        .nav-ext .ext-ico { opacity: 0.7; font-size: 0.75rem; }
+        .nav-ext.nav-comp {
+            border-color: #2c7da0;
+            color: #1f5e7a;
+            background: #eaf4fb;
+        }
+        [data-theme="dark"] .nav-ext.nav-comp {
+            background: #1a2c40;
+            color: #7dd3fc;
+            border-color: #2c7da0;
+        }
+
+        /* ===== Header nav + menú móvil ===== */
+        .header-top-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+        .header-nav {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-left: auto;
+            background: var(--header-border);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            min-width: 48px;
+            min-height: 44px;
+        }
+        .btn-menu-toggle:hover { opacity: 0.9; }
+        .btn-menu-toggle .burger {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 20px;
+        }
+        .btn-menu-toggle .burger span {
+            display: block;
+            height: 2.5px;
+            width: 100%;
+            background: #fff;
+            border-radius: 2px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .btn-menu-toggle[aria-expanded="true"] .burger span:nth-child(1) {
+            transform: translateY(6.5px) rotate(45deg);
+        }
+        .btn-menu-toggle[aria-expanded="true"] .burger span:nth-child(2) { opacity: 0; }
+        .btn-menu-toggle[aria-expanded="true"] .burger span:nth-child(3) {
+            transform: translateY(-6.5px) rotate(-45deg);
+        }
+        .nav-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 900;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+        body.menu-open { overflow: hidden; }
+        body.menu-open .nav-backdrop { display: block; }
+
+        @media (max-width: 900px) {
+            .btn-menu-toggle { display: inline-flex; }
+            .header-top-row .btn-home-svg { padding: 8px 12px; font-size: 13px; }
+            .header-nav {
+                display: none;
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: min(320px, 88vw);
+                z-index: 950;
+                flex-direction: column;
+                flex-wrap: nowrap;
+                align-items: stretch;
+                gap: 10px;
+                padding: 72px 18px 24px;
+                background: var(--bg-container);
+                box-shadow: -8px 0 28px rgba(0,0,0,0.18);
+                border-left: 1px solid var(--border-color);
+                overflow-y: auto;
+                animation: slideNav 0.22s ease;
+            }
+            body.menu-open .header-nav { display: flex; }
+            .header-nav .portal-home,
+            .header-nav .btn-home-svg,
+            .header-nav .nav-ext,
+            .header-nav .btn,
+            .header-nav .dark-toggle {
+                width: 100%;
+                justify-content: flex-start;
+                border-radius: 12px;
+                padding: 12px 14px;
+                font-size: 15px;
+                min-height: 44px;
+            }
+            .header-nav .btn-home-svg { background: #0f766e; color: #fff; }
+            .header-nav .btn { text-align: left; }
+            .transport-selector {
+                margin-left: 0;
+                width: 100%;
+                order: 3;
+            }
+            .main-header { align-items: flex-start; }
+        }
+        @keyframes slideNav {
+            from { transform: translateX(16px); opacity: 0.6; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .flex-row .field { flex: 1 1 100%; }
+            .main-header { flex-direction: column; align-items: stretch; }
+            .header-top-row { width: 100%; }
+            .logo-area h1 { font-size: 20px; }
+            .transport-selector { margin-left: 0; width: 100%; }
+            .version-control { flex-direction: column; align-items: stretch; }
+            .comparison-display { flex-direction: column; align-items: flex-start; }
+            .search-bar input { min-width: 100%; }
+            .filters-row .filter-group { flex: 1 1 100%; }
+            .filters-row .filter-group input[type="number"] { width: 100%; }
+            .chart-container canvas { max-height: 200px; }
+            .compare-results { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) { .compare-results { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ===== HEADER ===== -->
+    <button type="button" class="nav-backdrop" id="navBackdrop" aria-label="Cerrar menú" tabindex="-1"></button>
+    <header class="main-header">
+        <div class="header-top-row">
+            <div class="logo-area" id="logoArea">
+                <div id="logoSvg"></div>
+                <div>
+                    <h1 id="tituloEmpresa">Transporte Hacha de Piedra</h1>
+                    <span class="subtitle" id="subtituloEmpresa">Tarifas, cálculo y control de fletes</span>
+                    <div class="periodo-header" id="periodoHeader">
+                        📅 Período: <span id="periodoHeaderTexto">Sin período</span>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn-home-svg" id="btnRetroceso" title="Volver a la página anterior">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Volver</span>
+            </button>
+            <button type="button" class="btn-menu-toggle" id="btnMenuToggle" aria-expanded="false" aria-controls="headerNav" title="Menú">
+                <span class="burger" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="menu-label">Menú</span>
+            </button>
+        </div>
+        <div class="transport-selector">
+            <label for="transporteSelect">🚛 Transporte:</label>
+            <select id="transporteSelect">
+                <option value="hacha">Hacha de Piedra</option>
+                <option value="sevillanita">Sevillanita</option>
+            </select>
+        </div>
+        <nav class="header-nav" id="headerNav" aria-label="Navegación">
+            <button type="button" class="btn-home-svg" id="btnRetrocesoNav" title="Volver a la página anterior">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Volver</span>
+            </button>
+            <button type="button" class="nav-ext nav-comp" id="btnAbrirComprobantes" title="Abrir Comprobantes en nueva pestaña">
+                📄 Comprobantes <span class="ext-ico" aria-hidden="true">↗</span>
+            </button>
+            <button type="button" class="nav-ext" id="btnAbrirLogitrack" title="Abrir LogiTrack en nueva pestaña">
+                🚛 LogiTrack <span class="ext-ico" aria-hidden="true">↗</span>
+            </button>
+            <button type="button" class="nav-ext" id="btnAbrirFletes" title="Abrir Fletes PRO en nueva pestaña">
+                💵 Fletes PRO <span class="ext-ico" aria-hidden="true">↗</span>
+            </button>
+            <button class="btn btn-sm" id="btnRespaldoHeader" type="button" style="background:#1a2b4a;color:#fff;border-radius:12px;padding:12px 14px;" title="Descargar JSON con todos los cuadros tarifarios (Hacha + Sevillanita) y versiones">
+                💾 Respaldo JSON
+            </button>
+            <button class="dark-toggle" id="darkToggle">🌓 Modo oscuro</button>
+        </nav>
+    </header>
+
+    <!-- ===== CALCULADORA ===== -->
+    <div class="flex-row">
+        <div class="field">
+            <label>Origen</label>
+            <select id="origenSelect"><option value="">-- Seleccionar --</option></select>
+        </div>
+        <div class="field">
+            <label>Destino</label>
+            <select id="destinoSelect"><option value="">-- Seleccionar --</option></select>
+        </div>
+        <div class="field">
+            <label>Kilogramos (KG)</label>
+            <input type="number" id="kgInput" min="0" step="any" value="0" />
+        </div>
+        <div class="field">
+            <label>Metros cúbicos (M3)</label>
+            <input type="number" id="m3Input" min="0" step="any" value="0" />
+        </div>
+        <div class="field" style="flex:0 0 auto; display:flex; gap:10px;">
+            <button class="btn" id="calcularBtn">Calcular</button>
+            <button class="btn btn-clean" id="limpiarBtn">Limpiar</button>
+        </div>
+    </div>
+
+    <!-- ===== RESULTADOS ===== -->
+    <div id="resultados" class="result-box" style="display:none;">
+        <h3>📊 Desglose del flete</h3>
+        <div class="result-grid" id="resultGrid"></div>
+        <div class="comparison-area" id="comparisonArea" style="display:none;">
+            <div class="flex-row" style="margin-bottom: 0;">
+                <div class="field" style="flex: 1;">
+                    <label>💰 Importe facturado (sin IVA)</label>
+                    <input type="number" id="facturadoInput" step="any" value="0" />
+                </div>
+                <div class="field" style="flex: 2;">
+                    <label>📊 Variación vs. Base tarifaria</label>
+                    <div class="comparison-display" id="comparisonDisplay">
+                        <span>Ingresa un importe para comparar</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GRÁFICO DE COMPARACIÓN (LÍNEAS) ===== -->
+    <div class="chart-container">
+        <h4>📈 Comparación de valores promedio entre períodos</h4>
+        <canvas id="comparisonChart" width="400" height="200"></canvas>
+        <div id="chartMessage" class="chart-message">Selecciona dos versiones en la sección de comparación para ver el gráfico</div>
+    </div>
+
+
+    <!-- ===== GRÁFICO DE EVOLUCIÓN DE TARIFAS ===== -->
+    <div class="chart-container" id="evolutionSection">
+        <h4>📉 Evolución de tarifas por período</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px 0;">
+            Promedio de cada columna a lo largo de las versiones guardadas (más la versión actual).
+        </p>
+        <div class="evo-controls">
+            <div>
+                <label for="evoCampoSelect">Columna</label><br>
+                <select id="evoCampoSelect">
+                    <option value="ALL">Todas las columnas</option>
+                    <option value="KG">KG (&lt;500)</option>
+                    <option value="500-999 KG">500-999 KG</option>
+                    <option value="MAS 1000 KG">MAS 1000 KG</option>
+                    <option value="MINIMOS">Mínimos</option>
+                    <option value="M3">M³</option>
+                </select>
+            </div>
+            <div>
+                <label for="evoRutaSelect">Ruta (opcional)</label><br>
+                <select id="evoRutaSelect">
+                    <option value="">— Promedio todas las rutas —</option>
+                </select>
+            </div>
+            <div style="align-self:flex-end;">
+                <button class="btn btn-outline btn-sm" id="evoRefreshBtn" type="button">🔄 Actualizar</button>
+            </div>
+        </div>
+        <div class="evo-kpis" id="evoKpis"></div>
+        <canvas id="evolutionChart" width="400" height="220"></canvas>
+        <div id="evolutionMessage" class="chart-message">Guardá al menos una versión para ver la evolución temporal.</div>
+    </div>
+
+
+    <!-- ===== ANÁLISIS ESTACIONAL ===== -->
+    <div class="chart-container" id="seasonSection">
+        <h4>🌍 Tendencias estacionales</h4>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px 0;">
+            Agrupa las versiones por mes y estación (hemisferio sur · Argentina) según el período cargado o la fecha de guardado.
+        </p>
+        <div class="evo-controls">
+            <div>
+                <label for="seasonCampoSelect">Columna a analizar</label><br>
+                <select id="seasonCampoSelect">
+                    <option value="KG">KG (&lt;500)</option>
+                    <option value="500-999 KG">500-999 KG</option>
+                    <option value="MAS 1000 KG" selected>MAS 1000 KG</option>
+                    <option value="MINIMOS">Mínimos</option>
+                    <option value="M3">M³</option>
+                </select>
+            </div>
+            <div style="align-self:flex-end;">
+                <button class="btn btn-outline btn-sm" id="seasonRefreshBtn" type="button">🔄 Recalcular</button>
+            </div>
+        </div>
+        <div class="season-insights" id="seasonInsights">Cargá y guardá versiones con período (ej. “Marzo 2025”) para detectar patrones estacionales.</div>
+        <div class="season-grid" id="seasonCards"></div>
+        <div class="season-charts-row">
+            <div>
+                <h5 style="margin:0 0 8px;color:var(--text-primary);">Por estación</h5>
+                <canvas id="seasonChart" height="200"></canvas>
+            </div>
+            <div>
+                <h5 style="margin:0 0 8px;color:var(--text-primary);">Por mes del año</h5>
+                <canvas id="monthChart" height="200"></canvas>
+            </div>
+        </div>
+        <div id="seasonMessage" class="chart-message" style="display:none;"></div>
+    </div>
+
+    <!-- ===== ADMINISTRACIÓN ===== -->
+    <div class="admin-section">
+        <h2>🗂️ Administrar tarifas <small>(edita, agrega o elimina rutas)</small></h2>
+
+        <div class="periodo-actual" id="periodoActualDisplay">
+            📅 Período actual: <span id="periodoActualTexto">Sin período</span>
+        </div>
+
+        <div class="version-control">
+            <label for="versionSelector" style="font-weight:600; display:flex; align-items:center; gap:6px;">📜 Versiones:</label>
+            <select id="versionSelector"><option value="">-- Actual --</option></select>
+            <button class="btn btn-outline btn-sm" id="guardarVersionBtn">💾 Guardar esta versión</button>
+            <button class="btn btn-del btn-sm" id="eliminarVersionBtn" style="display:none;">🗑️ Eliminar versión</button>
+            <span style="font-size:13px; color:var(--text-muted);">(Se guarda automáticamente al cargar Excel o guardar cambios)</span>
+        </div>
+
+        <!-- ===== COMPARADOR DE DOS VERSIONES (con selectores A y B) ===== -->
+        <div class="compare-box">
+            <div class="flex-row" style="margin:0; align-items:center;">
+                <div class="field" style="flex:0 0 auto;">
+                    <label>📌 Versión A:</label>
+                    <select id="compareVersionSelectA">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+                <div class="field" style="flex:0 0 auto;">
+                    <label>📌 Versión B:</label>
+                    <select id="compareVersionSelectB">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+                <div class="field" style="flex:0 0 auto;">
+                    <button class="btn btn-compare btn-sm" id="compareBtn">📊 Comparar</button>
+                </div>
+                <div style="flex:1; min-width:100px; font-size:13px; color:var(--text-muted);">
+                    (Variación % de A respecto a B)
+                </div>
+            </div>
+            <div id="compareResults" style="display:none;">
+                <h4 style="margin:10px 0 5px 0;">📈 Porcentaje de variación promedio (A vs B)</h4>
+                <div class="compare-results" id="compareResultsGrid"></div>
+                <button class="btn btn-outline btn-sm" id="toggleDetailBtn" style="margin-top:10px;">📋 Mostrar tabla detallada</button>
+                <div id="compareDetailContainer" style="display:none; margin-top:10px;">
+                    <div class="compare-detail-table" id="compareDetailTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros avanzados -->
+        <div class="filters-row" id="filtersRow">
+            <div class="filter-group"><label>Origen</label><input type="text" id="filterOrigen" placeholder="Filtrar origen" /></div>
+            <div class="filter-group"><label>Destino</label><input type="text" id="filterDestino" placeholder="Filtrar destino" /></div>
+            <div class="filter-group"><label>KG min</label><input type="number" id="filterKgMin" placeholder="0" /></div>
+            <div class="filter-group"><label>KG max</label><input type="number" id="filterKgMax" placeholder="9999" /></div>
+            <div class="filter-group"><label>500-999 min</label><input type="number" id="filter500Min" placeholder="0" /></div>
+            <div class="filter-group"><label>500-999 max</label><input type="number" id="filter500Max" placeholder="9999" /></div>
+            <div class="filter-group"><label>MAS 1000 min</label><input type="number" id="filter1000Min" placeholder="0" /></div>
+            <div class="filter-group"><label>MAS 1000 max</label><input type="number" id="filter1000Max" placeholder="9999" /></div>
+            <div class="filter-group"><label>Mínimos min</label><input type="number" id="filterMinMin" placeholder="0" /></div>
+            <div class="filter-group"><label>Mínimos max</label><input type="number" id="filterMinMax" placeholder="999999" /></div>
+            <div class="filter-group"><label>M3 min</label><input type="number" id="filterM3Min" placeholder="0" /></div>
+            <div class="filter-group"><label>M3 max</label><input type="number" id="filterM3Max" placeholder="999999" /></div>
+            <button class="btn btn-clean btn-sm" id="clearFiltersBtn">Limpiar filtros</button>
+        </div>
+
+        <!-- Herramientas -->
+        <div class="search-bar" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; align-items:center;">
+            <input type="text" id="buscarInput" placeholder="🔍 Buscar por Origen o Destino..." style="flex:1; min-width:200px; padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-secondary);" />
+            <button class="btn btn-export btn-sm" id="exportarBtn" title="Exporta el estado completo (compatible)">📤 Exportar JSON</button>
+            <button class="btn btn-import btn-sm" id="importarBtn">📥 Importar JSON</button>
+            <button class="btn btn-export btn-sm" id="exportExcelBtn">📥 Exportar Excel</button>
+            <button class="btn btn-sm" id="btnRespaldoCompleto" style="background:#1a2b4a;color:#fff;" title="Respaldo de TODOS los cuadros tarifarios (Hacha + Sevillanita), versiones e historial">
+                💾 Respaldo completo
+            </button>
+            <button class="btn btn-outline btn-sm" id="btnRestaurarRespaldo" title="Restaurar desde un archivo de respaldo completo">
+                ♻️ Restaurar respaldo
+            </button>
+            <input type="file" id="importFileInput" accept=".json" style="display:none;" />
+            <input type="file" id="restoreBackupInput" accept=".json,application/json" style="display:none;" />
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;">
+            <strong>Respaldo completo</strong> guarda en un único JSON: ambos transportes, tarifas actuales, todas las versiones históricas y períodos. Guardalo en un lugar seguro.
+        </p>
+
+        <div class="table-wrap">
+            <table id="tarifasTable">
+                <thead>
+                    <tr>
+                        <th data-col="ORIGEN">Origen <span class="sort-indicator">↕</span></th>
+                        <th data-col="DESTINO">Destino <span class="sort-indicator">↕</span></th>
+                        <th data-col="KG">KG (<500) <span class="sort-indicator">↕</span></th>
+                        <th data-col="500-999 KG">500-999 KG <span class="sort-indicator">↕</span></th>
+                        <th data-col="MAS 1000 KG">MAS 1000 KG <span class="sort-indicator">↕</span></th>
+                        <th data-col="MINIMOS">MINIMOS <span class="sort-indicator">↕</span></th>
+                        <th data-col="M3">M3 <span class="sort-indicator">↕</span></th>
+                        <th style="width:120px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaBody"></tbody>
+            </table>
+        </div>
+        <div class="footer-actions">
+            <button class="btn btn-add btn-sm" id="agregarFilaBtn">➕ Agregar ruta</button>
+            <button class="btn btn-outline btn-sm" id="guardarCambiosBtn">💾 Guardar cambios</button>
+            <span style="flex:1;"></span>
+            <div class="file-upload">
+                <span>📂 Cargar Excel</span>
+                <input type="file" id="excelInput" accept=".xlsx, .xls" />
+            </div>
+            <div id="sheetSelector" style="display:none; margin-left:10px;">
+                <label for="sheetSelect">Hoja:</label>
+                <select id="sheetSelect"></select>
+                <button class="btn btn-sm" id="confirmSheetBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    // ================================================================
+    // 1. DATOS INICIALES
+    // ================================================================
+    const datosHacha = [
+        { ORIGEN: "BS AS", DESTINO: "SALTA", KG: 283.6, "500-999 KG": 169.73, "MAS 1000 KG": 168.13, MINIMOS: 13589.35, M3: 53292.35 },
+        { ORIGEN: "BS AS", DESTINO: "JUJUY", KG: 310.22, "500-999 KG": 187.38, "MAS 1000 KG": 184.78, MINIMOS: 14521.96, M3: 58098.71 },
+        { ORIGEN: "BS AS", DESTINO: "RAMALNORTE", KG: 327.81, "500-999 KG": 215.68, "MAS 1000 KG": 216.4, MINIMOS: 16566.92, M3: 64672.85 },
+        { ORIGEN: "BS AS", DESTINO: "TUCUMAN", KG: 214.98, "500-999 KG": 133.68, "MAS 1000 KG": 133.35, MINIMOS: 10493.8, M3: 41618.32 },
+        { ORIGEN: "BS AS", DESTINO: "CATAMARCA", KG: 368.89, "500-999 KG": 221.01, "MAS 1000 KG": 218.58, MINIMOS: 17666.15, M3: 69280.06 },
+        { ORIGEN: "ROSARIO", DESTINO: "SALTA", KG: 253.86, "500-999 KG": 155.61, "MAS 1000 KG": 156.77, MINIMOS: 12309.82, M3: 48732.66 },
+        { ORIGEN: "ROSARIO", DESTINO: "JUJUY", KG: 279.24, "500-999 KG": 171.68, "MAS 1000 KG": 170.16, MINIMOS: 13758.2, M3: 53839.53 },
+        { ORIGEN: "ROSARIO", DESTINO: "RAMAL NORTE", KG: 313.46, "500-999 KG": 191.96, "MAS 1000 KG": 188.54, MINIMOS: 15432.78, M3: 58326.79 },
+        { ORIGEN: "ROSARIO", DESTINO: "TUCUMAN", KG: 187, "500-999 KG": 121.52, "MAS 1000 KG": 118.91, MINIMOS: 9573.32, M3: 35954.07 },
+        { ORIGEN: "ROSARIO", DESTINO: "CATAMARCA", KG: 330.03, "500-999 KG": 202.65, "MAS 1000 KG": 203.81, MINIMOS: 16002.77, M3: 63352.46 },
+        { ORIGEN: "TUCUMAN", DESTINO: "SALTA", KG: 160.03, "500-999 KG": 136.44, "MAS 1000 KG": 128.04, MINIMOS: 6523.89, M3: 23963.58 },
+        { ORIGEN: "TUCUMAN", DESTINO: "JUJUY", KG: 168.03, "500-999 KG": 143.32, "MAS 1000 KG": 134.44, MINIMOS: 6850.07, M3: 25161.77 },
+        { ORIGEN: "TUCUMAN", DESTINO: "RAMAL NORTE", KG: 260.91, "500-999 KG": 223.24, "MAS 1000 KG": 208.71, MINIMOS: 10636.99, M3: 35499.51 },
+        { ORIGEN: "TUCUMAN", DESTINO: "CATAMARCA", KG: 183.58, "500-999 KG": 133.57, "MAS 1000 KG": 135.86, MINIMOS: 9728.96, M3: 30508.5 },
+        { ORIGEN: "TUCUMAN", DESTINO: "TUCUCMAN", KG: 93.96, "500-999 KG": 61.61, "MAS 1000 KG": 58.06, MINIMOS: 5748.17, M3: 23020.73 },
+        { ORIGEN: "TUCUMAN", DESTINO: "RAMAL SUR", KG: 110.26, "500-999 KG": 72.54, "MAS 1000 KG": 69.47, MINIMOS: 6744.73, M3: 53715.03 },
+        { ORIGEN: "SALTA", DESTINO: "SALTA", KG: 93.96, "500-999 KG": 61.64, "MAS 1000 KG": 59.2, MINIMOS: 6365.8, M3: 23020.73 },
+        { ORIGEN: "CORDOBA", DESTINO: "SALTA", KG: 440.92, "500-999 KG": 378.08, "MAS 1000 KG": 352.74, MINIMOS: 13498.8, M3: 69000.01 },
+        { ORIGEN: "CORDOBA", DESTINO: "JUJUY", KG: 462.96, "500-999 KG": 397.05, "MAS 1000 KG": 370.37, MINIMOS: 14173.74, M3: 72450.01 },
+        { ORIGEN: "CORDOBA", DESTINO: "RAMAL NORTE", KG: 524.1, "500-999 KG": 449.61, "MAS 1000 KG": 419.29, MINIMOS: 16044.92, M3: 82014.57 },
+        { ORIGEN: "CORDOBA", DESTINO: "TUCUMAN", KG: 308.29, "500-999 KG": 263.99, "MAS 1000 KG": 246.65, MINIMOS: 9439, M3: 48246.62 },
+        { ORIGEN: "CORDOBA", DESTINO: "CATAMARCA", KG: 280.53, "500-999 KG": 172.25, "MAS 1000 KG": 173.24, MINIMOS: 13602.35, M3: 53849.59 },
+        { ORIGEN: "LA RIOJA", DESTINO: "CATAMARCA", KG: 152.98, "500-999 KG": 111.3, "MAS 1000 KG": 113.23, MINIMOS: 6523.89, M3: 15254.25 }
+    ];
+    const datosSevillanita = [
+        { ORIGEN: "SALTA", DESTINO: "SALTA", KG: 102.44, "500-999 KG": 67.2, "MAS 1000 KG": 64.54, MINIMOS: 6940.15, M3: 21827.08 },
+        { ORIGEN: "BS AS", DESTINO: "SALTA", KG: 309.19, "500-999 KG": 185.04, "MAS 1000 KG": 183.3, MINIMOS: 7144.21, M3: 49947.53 },
+        { ORIGEN: "BS AS", DESTINO: "CATAMARCA", KG: 350.9, "500-999 KG": 229.8, "MAS 1000 KG": 193.65, MINIMOS: 6548.99, M3: 37036.15 },
+        { ORIGEN: "BS AS", DESTINO: "TUCUMAN", KG: 234.38, "500-999 KG": 145.74, "MAS 1000 KG": 145.38, MINIMOS: 5648.95, M3: 38391.72 },
+        { ORIGEN: "BS AS", DESTINO: "JUJUY", KG: 338.21, "500-999 KG": 204.29, "MAS 1000 KG": 193.65, MINIMOS: 7144.21, M3: 52445.04 },
+        { ORIGEN: "BS AS", DESTINO: "RAMAL NORTE", KG: 357.39, "500-999 KG": 235.14, "MAS 1000 KG": 227.06, MINIMOS: 8333.82, M3: 61473.86 },
+        { ORIGEN: "LA RIOJA", DESTINO: "CATAMARCA", KG: 166.78, "500-999 KG": 121.34, "MAS 1000 KG": 123.45, MINIMOS: 7112.5, M3: 16630.55 },
+        { ORIGEN: "ROSARIO", DESTINO: "SALTA", KG: 276.76, "500-999 KG": 169.65, "MAS 1000 KG": 166.0, MINIMOS: 6548.99, M3: 44952.75 },
+        { ORIGEN: "ROSARIO", DESTINO: "CATAMARCA", KG: 313.93, "500-999 KG": 210.71, "MAS 1000 KG": 180.56, MINIMOS: 5932.35, M3: 33867.33 },
+        { ORIGEN: "ROSARIO", DESTINO: "TUCUMAN", KG: 204.58, "500-999 KG": 132.48, "MAS 1000 KG": 127.59, MINIMOS: 5648.95, M3: 34579.03 },
+        { ORIGEN: "ROSARIO", DESTINO: "JUJUY", KG: 304.43, "500-999 KG": 187.17, "MAS 1000 KG": 174.3, MINIMOS: 6548.99, M3: 47200.32 },
+        { ORIGEN: "ROSARIO", DESTINO: "RAMAL NORTE", KG: 341.74, "500-999 KG": 209.28, "MAS 1000 KG": 204.1, MINIMOS: 6548.99, M3: 55326.46 },
+        { ORIGEN: "TUCUMAN", DESTINO: "SALTA", KG: 174.47, "500-999 KG": 134.78, "MAS 1000 KG": 113.5, MINIMOS: 4200.75, M3: 20750.34 },
+        { ORIGEN: "TUCUMAN", DESTINO: "CATAMARCA", KG: 200.14, "500-999 KG": 134.78, "MAS 1000 KG": 113.5, MINIMOS: 4199.83, M3: 17218.37 },
+        { ORIGEN: "TUCUMAN", DESTINO: "TUCUMAN", KG: 102.44, "500-999 KG": 67.2, "MAS 1000 KG": 63.3, MINIMOS: 6266.79, M3: 12802.5 },
+        { ORIGEN: "TUCUMAN", DESTINO: "JUJUY", KG: 183.19, "500-999 KG": 134.78, "MAS 1000 KG": 113.5, MINIMOS: 4199.83, M3: 22516.33 },
+        { ORIGEN: "TUCUMAN", DESTINO: "RAMAL NORTE", KG: 231.48, "500-999 KG": 151.66, "MAS 1000 KG": 127.59, MINIMOS: 4560.12, M3: 28255.79 },
+        { ORIGEN: "TUCUMAN", DESTINO: "RAMAL SUR", KG: 120.21, "500-999 KG": 79.08, "MAS 1000 KG": 75.74, MINIMOS: 7353.27, M3: 47659.17 },
+        { ORIGEN: "CORDOBA", DESTINO: "SALTA", KG: 267.51, "500-999 KG": 175.41, "MAS 1000 KG": 147.51, MINIMOS: 5959.01, M3: 39958.01 },
+        { ORIGEN: "CORDOBA", DESTINO: "CATAMARCA", KG: 305.84, "500-999 KG": 187.79, "MAS 1000 KG": 188.87, MINIMOS: 14829.61, M3: 58708.1 },
+        { ORIGEN: "CORDOBA", DESTINO: "TUCUMAN", KG: 205.78, "500-999 KG": 134.78, "MAS 1000 KG": 113.5, MINIMOS: 5648.95, M3: 30736.95 },
+        { ORIGEN: "CORDOBA", DESTINO: "JUJUY", KG: 281.06, "500-999 KG": 184.24, "MAS 1000 KG": 154.96, MINIMOS: 5959.01, M3: 41955.87 },
+        { ORIGEN: "CORDOBA", DESTINO: "RAMAL NORTE", KG: 329.36, "500-999 KG": 215.71, "MAS 1000 KG": 181.46, MINIMOS: 6548.99, M3: 49179.1 }
+    ];
+
+    // ================================================================
+    // 2. ESTADO GLOBAL
+    // ================================================================
+    const estados = {
+        hacha: { tarifas: JSON.parse(JSON.stringify(datosHacha)), historial: [], ultimoId: 0, periodoActual: '' },
+        sevillanita: { tarifas: JSON.parse(JSON.stringify(datosSevillanita)), historial: [], ultimoId: 0, periodoActual: '' }
+    };
+    let transporteActual = 'hacha';
+    let tarifas = [];
+    let historialTarifas = [];
+    let ultimoIdVersion = 0;
+    let periodoActual = '';
+    let ultimoSubtotal = 0;
+    let sortColumn = '';
+    let sortAsc = true;
+    let chartInstance = null;
+    let chartInstanceEvo = null;
+    let chartInstanceSeason = null;
+    let chartInstanceMonth = null;
+    let pendingExcelFile = null;
+    let compareDetailVisible = false;
+
+    // ================================================================
+    // 3. PERSISTENCIA
+    // ================================================================
+    function guardarEnLocalStorage() {
+        const data = { estados, transporteActual };
+        try { localStorage.setItem('transportes_data', JSON.stringify(data)); } catch(e) { console.warn(e); }
+    }
+    function cargarDesdeLocalStorage() {
+        try {
+            const raw = localStorage.getItem('transportes_data');
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+            if (data.estados) {
+                ['hacha','sevillanita'].forEach(key => {
+                    if (data.estados[key]) {
+                        estados[key].tarifas = data.estados[key].tarifas || estados[key].tarifas;
+                        estados[key].historial = data.estados[key].historial || [];
+                        estados[key].ultimoId = data.estados[key].ultimoId || 0;
+                        estados[key].periodoActual = data.estados[key].periodoActual || '';
+                    }
+                });
+            }
+            if (data.transporteActual) transporteActual = data.transporteActual;
+            return true;
+        } catch(e) { console.warn(e); return false; }
+    }
+
+    // ================================================================
+    // 4. TOAST
+    // ================================================================
+    function mostrarNotificacion(msg, tipo='info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${tipo}`;
+        toast.textContent = msg;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100px)';
+            toast.style.transition = '0.3s';
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+
+    // ================================================================
+    // 5. GESTIÓN DE ESTADO
+    // ================================================================
+    function guardarEstadoActual() {
+        estados[transporteActual].tarifas = JSON.parse(JSON.stringify(tarifas));
+        estados[transporteActual].historial = JSON.parse(JSON.stringify(historialTarifas));
+        estados[transporteActual].ultimoId = ultimoIdVersion;
+        estados[transporteActual].periodoActual = periodoActual;
+        guardarEnLocalStorage();
+    }
+    function restaurarEstado(transporte) {
+        const estado = estados[transporte];
+        tarifas = JSON.parse(JSON.stringify(estado.tarifas));
+        historialTarifas = JSON.parse(JSON.stringify(estado.historial));
+        ultimoIdVersion = estado.ultimoId;
+        periodoActual = estado.periodoActual || '';
+    }
+
+    // ================================================================
+    // 6. VERSIONES Y PERÍODOS
+    // ================================================================
+    function guardarVersion(periodo) {
+        if (!tarifas || tarifas.length===0) { mostrarNotificacion('No hay tarifas para guardar.','warning'); return; }
+        const copia = JSON.parse(JSON.stringify(tarifas));
+        const id = ++ultimoIdVersion;
+        const timestamp = new Date().toLocaleString('es-AR');
+        historialTarifas.push({ id, timestamp, periodo: periodo || '', data: copia });
+        periodoActual = periodo || '';
+        actualizarSelectorVersiones();
+        actualizarDisplayPeriodo();
+        actualizarHeaderPeriodo();
+        guardarEstadoActual();
+        mostrarNotificacion(`📁 Versión ${id} guardada (${periodo || 'sin período'})`,'success');
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+        actualizarSelectoresComparacion();
+    }
+    function guardarVersionActual() {
+        let periodo = periodoActual || prompt('Ingrese un período para esta versión (ej. "Enero 2025"):') || '';
+        guardarVersion(periodo);
+    }
+
+    function actualizarSelectorVersiones() {
+        const selector = document.getElementById('versionSelector');
+        const valorActual = selector.value;
+        selector.innerHTML = '<option value="">-- Actual --</option>';
+        [...historialTarifas].reverse().forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = `V${v.id} - ${v.periodo || 'sin período'} (${v.timestamp})`;
+            selector.appendChild(opt);
+        });
+        if (valorActual) selector.value = valorActual;
+        document.getElementById('eliminarVersionBtn').style.display = selector.value ? 'inline-block' : 'none';
+    }
+
+    function actualizarDisplayPeriodo() {
+        document.getElementById('periodoActualTexto').textContent = periodoActual || 'Sin período';
+    }
+    function actualizarHeaderPeriodo() {
+        document.getElementById('periodoHeaderTexto').textContent = periodoActual || 'Sin período';
+    }
+
+    function cargarVersionDesdeHistorial(id) {
+        const version = historialTarifas.find(v => v.id === parseInt(id));
+        if (!version) { mostrarNotificacion('Versión no encontrada.','error'); return; }
+        tarifas = JSON.parse(JSON.stringify(version.data));
+        periodoActual = version.periodo || '';
+        actualizarDisplayPeriodo();
+        actualizarHeaderPeriodo();
+        renderizarTabla();
+        llenarSelectores();
+        calcular();
+        mostrarNotificacion(`📌 Cargada Versión ${version.id} (${version.periodo || 'sin período'})`,'info');
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+    }
+
+    function actualizarSelectoresComparacion() {
+        const selA = document.getElementById('compareVersionSelectA');
+        const selB = document.getElementById('compareVersionSelectB');
+        const valorA = selA.value;
+        const valorB = selB.value;
+        const opts = '<option value="">-- Seleccionar --</option><option value="actual">-- Actual --</option>' +
+            historialTarifas.map(v => `<option value="${v.id}">V${v.id} - ${v.periodo || 'sin período'}</option>`).join('');
+        selA.innerHTML = opts;
+        selB.innerHTML = opts;
+        if (valorA) selA.value = valorA;
+        if (valorB) selB.value = valorB;
+    }
+
+    // ================================================================
+    // 7-9. GRÁFICOS (simplificados para mantener funcionalidad)
+    // ================================================================
+    const EVO_CAMPOS = ['KG', '500-999 KG', 'MAS 1000 KG', 'MINIMOS', 'M3'];
+    const EVO_NOMBRES = { 'KG':'KG (<500)', '500-999 KG':'500-999 KG', 'MAS 1000 KG':'MAS 1000 KG', 'MINIMOS':'Mínimos', 'M3':'M3' };
+    const EVO_COLORS = { 'KG':'#3498db', '500-999 KG':'#9b59b6', 'MAS 1000 KG':'#e67e22', 'MINIMOS':'#1abc9c', 'M3':'#e74c3c' };
+
+    function promedioCampo(arr, campo, rutaKey) {
+        let data = arr || [];
+        if (rutaKey) {
+            const [o, d] = rutaKey.split('|');
+            data = data.filter(r => r.ORIGEN === o && r.DESTINO === d);
+        }
+        if (!data.length) return 0;
+        return data.reduce((s, r) => s + (r[campo] || 0), 0) / data.length;
+    }
+
+    function seriesEvolucion(rutaKey) {
+        const pts = [];
+        historialTarifas.forEach(v => {
+            pts.push({ label: v.periodo || `V${v.id}`, data: v.data });
+        });
+        pts.push({ label: periodoActual || 'Actual', data: tarifas });
+        return pts;
+    }
+
+    function llenarSelectRutasEvo() {
+        const sel = document.getElementById('evoRutaSelect');
+        if (!sel) return;
+        const actual = sel.value;
+        const rutas = [...new Set(tarifas.map(r => `${r.ORIGEN}|${r.DESTINO}`))].sort();
+        sel.innerHTML = '<option value="">— Promedio todas las rutas —</option>' +
+            rutas.map(k => `<option value="${k}">${k.replace('|',' → ')}</option>`).join('');
+        if (actual) sel.value = actual;
+    }
+
+    function renderEvoKpis(pts, campoSel, rutaKey) {
+        const cont = document.getElementById('evoKpis');
+        if (!cont || pts.length < 2) { cont.innerHTML = ''; return; }
+        const campos = campoSel === 'ALL' ? EVO_CAMPOS : [campoSel];
+        let html = '';
+        campos.forEach(c => {
+            const vals = pts.map(p => promedioCampo(p.data, c, rutaKey));
+            const first = vals[0], last = vals[vals.length-1];
+            const diff = last - first;
+            const pct = first ? (diff / first * 100) : 0;
+            const cls = diff > 0.01 ? 'up' : (diff < -0.01 ? 'down' : '');
+            html += `<div class="evo-kpi"><div class="lbl">${EVO_NOMBRES[c]||c}</div><div class="val ${cls}">${last.toFixed(1)} <small>(${pct>=0?'+':''}${pct.toFixed(1)}%)</small></div></div>`;
+        });
+        cont.innerHTML = html;
+    }
+
+    function actualizarGraficoEvolucion() {
+        const canvas = document.getElementById('evolutionChart');
+        const msgDiv = document.getElementById('evolutionMessage');
+        if (!canvas || !msgDiv) return;
+
+        llenarSelectRutasEvo();
+        const campoSel = (document.getElementById('evoCampoSelect') || {}).value || 'ALL';
+        const rutaKey = (document.getElementById('evoRutaSelect') || {}).value || '';
+        const pts = seriesEvolucion(rutaKey);
+
+        if (pts.length < 2 && historialTarifas.length === 0) {
+            canvas.style.display = 'none';
+            msgDiv.style.display = 'block';
+            msgDiv.textContent = 'Guardá al menos una versión para ver la evolución temporal.';
+            if (chartInstanceEvo) { chartInstanceEvo.destroy(); chartInstanceEvo = null; }
+            document.getElementById('evoKpis').innerHTML = '';
+            return;
+        }
+
+        canvas.style.display = 'block';
+        msgDiv.style.display = 'none';
+        renderEvoKpis(pts, campoSel, rutaKey);
+
+        const labels = pts.map(p => p.label);
+        const campos = campoSel === 'ALL' ? EVO_CAMPOS : [campoSel];
+        const datasets = campos.map(c => ({
+            label: EVO_NOMBRES[c] || c,
+            data: pts.map(p => promedioCampo(p.data, c, rutaKey)),
+            borderColor: EVO_COLORS[c] || '#333',
+            backgroundColor: (EVO_COLORS[c] || '#333') + '22',
+            tension: 0.25,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            fill: campoSel !== 'ALL',
+            borderWidth: 2.5
+        }));
+
+        if (chartInstanceEvo) {
+            chartInstanceEvo.destroy();
+            chartInstanceEvo = null;
+        }
+
+        const color = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#2c3e50';
+        const ctx = canvas.getContext('2d');
+        chartInstanceEvo = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { color, boxWidth: 12, font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const v = ctx.parsed.y;
+                                return ` ${ctx.dataset.label}: ${v.toFixed(2)}`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        color,
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: (v) => (v == null ? '' : Number(v).toFixed(1)),
+                        font: { weight: 'bold', size: 9 },
+                        display: (ctx) => labels.length <= 8
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color,
+                            callback: (v) => Number(v).toFixed(1)
+                        },
+                        title: { display: true, text: 'Valor promedio', color, font: { size: 11 } }
+                    },
+                    x: {
+                        ticks: { color, maxRotation: 40, minRotation: 0, font: { size: 10 } },
+                        title: { display: true, text: 'Período / versión', color, font: { size: 11 } }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function actualizarGraficoComparacion() {
+        const selA = document.getElementById('compareVersionSelectA');
+        const selB = document.getElementById('compareVersionSelectB');
+        const idA = selA.value;
+        const idB = selB.value;
+        const canvas = document.getElementById('comparisonChart');
+        const msgDiv = document.getElementById('chartMessage');
+
+        if (!idA || !idB || idA === idB) {
+            canvas.style.display = 'none';
+            msgDiv.style.display = 'block';
+            return;
+        }
+
+        const getData = (id) => {
+            if (id === 'actual') return tarifas;
+            const v = historialTarifas.find(v => v.id === parseInt(id));
+            return v ? v.data : null;
+        };
+        const dataA = getData(idA);
+        const dataB = getData(idB);
+        if (!dataA || !dataB) {
+            canvas.style.display = 'none';
+            msgDiv.style.display = 'block';
+            msgDiv.textContent = 'No se encontraron datos para las versiones seleccionadas.';
+            return;
+        }
+
+        const campos = ['KG', '500-999 KG', 'MAS 1000 KG', 'MINIMOS', 'M3'];
+        const nombres = { 'KG':'KG (<500)', '500-999 KG':'500-999 KG', 'MAS 1000 KG':'MAS 1000 KG', 'MINIMOS':'Mínimos', 'M3':'M3' };
+
+        const promedio = (arr, campo) => {
+            if (!arr || arr.length === 0) return 0;
+            const sum = arr.reduce((acc, r) => acc + (r[campo] || 0), 0);
+            return sum / arr.length;
+        };
+
+        const promA = campos.map(c => promedio(dataA, c));
+        const promB = campos.map(c => promedio(dataB, c));
+
+        canvas.style.display = 'block';
+        msgDiv.style.display = 'none';
+
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        const color = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#2c3e50';
+
+        const labelA = selA.options[selA.selectedIndex]?.text || 'Versión A';
+        const labelB = selB.options[selB.selectedIndex]?.text || 'Versión B';
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: campos.map(c => nombres[c]),
+                datasets: [
+                    {
+                        label: labelA,
+                        data: promA,
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        tension: 0.2,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#2ecc71',
+                        fill: false,
+                    },
+                    {
+                        label: labelB,
+                        data: promB,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.2,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#e74c3c',
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: color }
+                    },
+                    datalabels: {
+                        color: color,
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: (value) => value.toFixed(2),
+                        font: { weight: 'bold', size: 10 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: color,
+                            callback: (value) => value.toFixed(2)
+                        }
+                    },
+                    x: {
+                        ticks: { color: color }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function actualizarAnalisisEstacional() {
+        // Placeholder simple para no romper
+        const insights = document.getElementById('seasonInsights');
+        if (insights) {
+            insights.innerHTML = historialTarifas.length > 0 
+                ? `Se detectaron <strong>${historialTarifas.length}</strong> versiones. Usá los selectores para analizar.`
+                : 'Cargá y guardá versiones con período (ej. “Marzo 2025”) para detectar patrones estacionales.';
+        }
+    }
+
+    // ================================================================
+    // 10. FUNCIONES DE TABLA, FILTROS, ORDENAMIENTO, VALIDACIÓN
+    // ================================================================
+    function getOrigenes() { return [...new Set(tarifas.map(r=>r.ORIGEN).filter(Boolean))].sort(); }
+    function getDestinos(origen) { return [...new Set(tarifas.filter(r=>r.ORIGEN===origen).map(r=>r.DESTINO))].sort(); }
+    function encontrarTarifa(origen, destino) { return tarifas.find(r=>r.ORIGEN===origen && r.DESTINO===destino) || null; }
+
+    function llenarSelectores() {
+        const origenSelect = document.getElementById('origenSelect');
+        const destinoSelect = document.getElementById('destinoSelect');
+        const origenActual = origenSelect.value;
+        const destinoActual = destinoSelect.value;
+        const origenes = getOrigenes();
+        origenSelect.innerHTML = '<option value="">-- Seleccionar --</option>';
+        origenes.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o;
+            opt.textContent = o;
+            if (o === origenActual) opt.selected = true;
+            origenSelect.appendChild(opt);
+        });
+        const origenSel = origenSelect.value;
+        const destinos = origenSel ? getDestinos(origenSel) : [];
+        destinoSelect.innerHTML = '<option value="">-- Seleccionar --</option>';
+        destinos.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            if (d === destinoActual && origenSel) opt.selected = true;
+            destinoSelect.appendChild(opt);
+        });
+    }
+
+    function renderizarTabla() {
+        const tbody = document.getElementById('tablaBody');
+        tbody.innerHTML = '';
+        tarifas.forEach((r, idx) => {
+            const tr = document.createElement('tr');
+            tr.dataset.idx = idx;
+            tr.innerHTML = `
+                <td><input type="text" class="edit-origen" value="${r.ORIGEN||''}" data-idx="${idx}" /></td>
+                <td><input type="text" class="edit-destino" value="${r.DESTINO||''}" data-idx="${idx}" /></td>
+                <td><input type="number" min="0" step="any" class="edit-kg" value="${r.KG||0}" data-idx="${idx}" /></td>
+                <td><input type="number" min="0" step="any" class="edit-500" value="${r['500-999 KG']||0}" data-idx="${idx}" /></td>
+                <td><input type="number" min="0" step="any" class="edit-1000" value="${r['MAS 1000 KG']||0}" data-idx="${idx}" /></td>
+                <td><input type="number" min="0" step="any" class="edit-min" value="${r.MINIMOS||0}" data-idx="${idx}" /></td>
+                <td><input type="number" min="0" step="any" class="edit-m3" value="${r.M3||0}" data-idx="${idx}" /></td>
+                <td>
+                    <button class="btn btn-copy btn-sm copiarFila" data-idx="${idx}">📋</button>
+                    <button class="btn btn-del btn-sm eliminarFila" data-idx="${idx}">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.querySelectorAll('.copiarFila').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                const fila = tarifas[idx];
+                if (!fila) return;
+                const nueva = JSON.parse(JSON.stringify(fila));
+                tarifas.splice(idx+1, 0, nueva);
+                guardarEstadoActual();
+                renderizarTabla();
+                llenarSelectores();
+                calcular();
+                mostrarNotificacion(`📋 Fila copiada (${fila.ORIGEN} → ${fila.DESTINO})`,'info');
+                aplicarFiltros();
+            });
+        });
+        document.querySelectorAll('.eliminarFila').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                if (confirm('¿Eliminar esta ruta?')) {
+                    tarifas.splice(idx, 1);
+                    guardarEstadoActual();
+                    renderizarTabla();
+                    llenarSelectores();
+                    calcular();
+                    aplicarFiltros();
+                }
+            });
+        });
+        aplicarFiltros();
+    }
+
+    function validarDatos(arr) {
+        const errores = [];
+        const seen = new Set();
+        arr.forEach((r, idx) => {
+            const o = (r.ORIGEN||'').trim();
+            const d = (r.DESTINO||'').trim();
+            if (!o) errores.push(`Fila ${idx+1}: Origen vacío.`);
+            if (!d) errores.push(`Fila ${idx+1}: Destino vacío.`);
+            if (r.KG < 0) errores.push(`Fila ${idx+1}: KG negativo.`);
+            if (r['500-999 KG'] < 0) errores.push(`Fila ${idx+1}: 500-999 KG negativo.`);
+            if (r['MAS 1000 KG'] < 0) errores.push(`Fila ${idx+1}: MAS 1000 KG negativo.`);
+            if (r.MINIMOS < 0) errores.push(`Fila ${idx+1}: Mínimos negativo.`);
+            if (r.M3 < 0) errores.push(`Fila ${idx+1}: M3 negativo.`);
+            if (o && d) {
+                const key = `${o}|${d}`;
+                if (seen.has(key)) errores.push(`Ruta duplicada: ${o} → ${d}`);
+                seen.add(key);
+            }
+        });
+        return errores;
+    }
+
+    function guardarCambiosTabla() {
+        const inputs = document.querySelectorAll('#tablaBody input');
+        const filas = {};
+        inputs.forEach(inp => {
+            const idx = parseInt(inp.dataset.idx);
+            if (!filas[idx]) filas[idx] = {};
+            const cls = inp.className;
+            if (cls.includes('edit-origen')) filas[idx].ORIGEN = inp.value.trim();
+            else if (cls.includes('edit-destino')) filas[idx].DESTINO = inp.value.trim();
+            else {
+                let val = parseFloat(inp.value);
+                if (isNaN(val) || val < 0) val = 0;
+                if (cls.includes('edit-kg')) filas[idx].KG = val;
+                else if (cls.includes('edit-500')) filas[idx]['500-999 KG'] = val;
+                else if (cls.includes('edit-1000')) filas[idx]['MAS 1000 KG'] = val;
+                else if (cls.includes('edit-min')) filas[idx].MINIMOS = val;
+                else if (cls.includes('edit-m3')) filas[idx].M3 = val;
+            }
+        });
+        const nuevas = [];
+        for (let i=0; i<tarifas.length; i++) {
+            if (filas[i]) {
+                const f = filas[i];
+                f.KG = Math.max(0, f.KG || 0);
+                f['500-999 KG'] = Math.max(0, f['500-999 KG'] || 0);
+                f['MAS 1000 KG'] = Math.max(0, f['MAS 1000 KG'] || 0);
+                f.MINIMOS = Math.max(0, f.MINIMOS || 0);
+                f.M3 = Math.max(0, f.M3 || 0);
+                nuevas.push(f);
+            } else {
+                nuevas.push(tarifas[i]);
+            }
+        }
+        const errores = validarDatos(nuevas);
+        if (errores.length) {
+            mostrarNotificacion('❌ Errores: ' + errores.join('; '), 'error');
+            return;
+        }
+        tarifas = nuevas;
+        guardarEstadoActual();
+        renderizarTabla();
+        llenarSelectores();
+        calcular();
+        mostrarNotificacion('✅ Cambios guardados correctamente.','success');
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+    }
+
+    function agregarFila() {
+        tarifas.push({ ORIGEN:'', DESTINO:'', KG:0, '500-999 KG':0, 'MAS 1000 KG':0, MINIMOS:0, M3:0 });
+        guardarEstadoActual();
+        renderizarTabla();
+        aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+        const rows = document.querySelectorAll('#tablaBody tr');
+        const fo = document.getElementById('filterOrigen').value.toLowerCase().trim();
+        const fd = document.getElementById('filterDestino').value.toLowerCase().trim();
+        const kgMin = parseFloat(document.getElementById('filterKgMin').value) || 0;
+        const kgMax = parseFloat(document.getElementById('filterKgMax').value) || Infinity;
+        const f5Min = parseFloat(document.getElementById('filter500Min').value) || 0;
+        const f5Max = parseFloat(document.getElementById('filter500Max').value) || Infinity;
+        const f10Min = parseFloat(document.getElementById('filter1000Min').value) || 0;
+        const f10Max = parseFloat(document.getElementById('filter1000Max').value) || Infinity;
+        const minMin = parseFloat(document.getElementById('filterMinMin').value) || 0;
+        const minMax = parseFloat(document.getElementById('filterMinMax').value) || Infinity;
+        const m3Min = parseFloat(document.getElementById('filterM3Min').value) || 0;
+        const m3Max = parseFloat(document.getElementById('filterM3Max').value) || Infinity;
+
+        rows.forEach(row => {
+            const o = row.querySelector('.edit-origen')?.value?.toLowerCase() || '';
+            const d = row.querySelector('.edit-destino')?.value?.toLowerCase() || '';
+            const kg = parseFloat(row.querySelector('.edit-kg')?.value) || 0;
+            const f5 = parseFloat(row.querySelector('.edit-500')?.value) || 0;
+            const f10 = parseFloat(row.querySelector('.edit-1000')?.value) || 0;
+            const mn = parseFloat(row.querySelector('.edit-min')?.value) || 0;
+            const m3 = parseFloat(row.querySelector('.edit-m3')?.value) || 0;
+            const match = (o.includes(fo) || fo==='') &&
+                          (d.includes(fd) || fd==='') &&
+                          kg >= kgMin && kg <= kgMax &&
+                          f5 >= f5Min && f5 <= f5Max &&
+                          f10 >= f10Min && f10 <= f10Max &&
+                          mn >= minMin && mn <= minMax &&
+                          m3 >= m3Min && m3 <= m3Max;
+            row.style.display = match ? '' : 'none';
+        });
+    }
+
+    function ordenarTabla(col) {
+        const tbody = document.getElementById('tablaBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (sortColumn === col) sortAsc = !sortAsc;
+        else { sortColumn = col; sortAsc = true; }
+        rows.sort((a,b) => {
+            let valA, valB;
+            if (col==='ORIGEN' || col==='DESTINO') {
+                valA = a.querySelector(`.edit-${col.toLowerCase()}`)?.value?.toLowerCase() || '';
+                valB = b.querySelector(`.edit-${col.toLowerCase()}`)?.value?.toLowerCase() || '';
+            } else {
+                const map = { 'KG':'edit-kg', '500-999 KG':'edit-500', 'MAS 1000 KG':'edit-1000', 'MINIMOS':'edit-min', 'M3':'edit-m3' };
+                valA = parseFloat(a.querySelector(`.${map[col]}`)?.value) || 0;
+                valB = parseFloat(b.querySelector(`.${map[col]}`)?.value) || 0;
+            }
+            if (valA < valB) return sortAsc ? -1 : 1;
+            if (valA > valB) return sortAsc ? 1 : -1;
+            return 0;
+        });
+        rows.forEach(row => tbody.appendChild(row));
+        document.querySelectorAll('th .sort-indicator').forEach(el => el.textContent = '↕');
+        const th = document.querySelector(`th[data-col="${col}"] .sort-indicator`);
+        if (th) th.textContent = sortAsc ? '↑' : '↓';
+    }
+
+    // ================================================================
+    // 11. CÁLCULO Y RESULTADOS
+    // ================================================================
+    function calcular() {
+        const origen = document.getElementById('origenSelect').value;
+        const destino = document.getElementById('destinoSelect').value;
+        const kg = parseFloat(document.getElementById('kgInput').value) || 0;
+        const m3 = parseFloat(document.getElementById('m3Input').value) || 0;
+        const resultDiv = document.getElementById('resultados');
+        const grid = document.getElementById('resultGrid');
+        const comparisonArea = document.getElementById('comparisonArea');
+        if (!origen || !destino) {
+            resultDiv.style.display = 'none';
+            comparisonArea.style.display = 'none';
+            return;
+        }
+        const tarifa = encontrarTarifa(origen, destino);
+        if (!tarifa) {
+            grid.innerHTML = `<div class="result-item"><span class="label">⚠️ No hay tarifa para esta ruta.</span></div>`;
+            resultDiv.style.display = 'block';
+            comparisonArea.style.display = 'none';
+            return;
+        }
+        let tarifaKg;
+        if (kg < 500) tarifaKg = tarifa.KG;
+        else if (kg >= 500 && kg < 1000) tarifaKg = tarifa["500-999 KG"];
+        else tarifaKg = tarifa["MAS 1000 KG"];
+        const costoPeso = kg * tarifaKg;
+        const costoVolumen = m3 * tarifa.M3;
+        const minimo = tarifa.MINIMOS;
+        const subtotal = Math.max(costoPeso, costoVolumen, minimo);
+        ultimoSubtotal = subtotal;
+        const iva = subtotal * 0.21;
+        const totalConIva = subtotal + iva;
+        grid.innerHTML = `
+            <div class="result-item"><div class="label">🚚 Ruta</div><div class="value">${origen} → ${destino}</div></div>
+            <div class="result-item"><div class="label">📦 Tarifa KG usada</div><div class="value">$${tarifaKg.toFixed(2)}</div><div style="font-size:12px;color:var(--text-muted);">(${kg < 500 ? 'KG (<500)' : kg < 1000 ? '500-999 KG' : 'MAS 1000 KG'})</div></div>
+            <div class="result-item costo-destacado"><div class="label">⚖️ Costo por peso</div><div class="value">$${costoPeso.toFixed(2)}</div></div>
+            <div class="result-item"><div class="label">📐 Tarifa M3</div><div class="value">$${tarifa.M3.toFixed(2)}</div></div>
+            <div class="result-item costo-destacado"><div class="label">📦 Costo por volumen</div><div class="value">$${costoVolumen.toFixed(2)}</div></div>
+            <div class="result-item"><div class="label">⬇️ Mínimo de la ruta</div><div class="value">$${minimo.toFixed(2)}</div></div>
+            <div class="result-item"><div class="label">💰 Subtotal (base)</div><div class="value">$${subtotal.toFixed(2)}</div></div>
+            <div class="result-item"><div class="label">🧾 IVA 21%</div><div class="value">$${iva.toFixed(2)}</div></div>
+            <div class="result-item total"><div class="label">💵 TOTAL CON IVA</div><div class="value">$${totalConIva.toFixed(2)}</div><div class="iva-nota">(Subtotal $${subtotal.toFixed(2)} + IVA $${iva.toFixed(2)})</div></div>
+        `;
+        resultDiv.style.display = 'block';
+        comparisonArea.style.display = 'block';
+        compararFactura();
+    }
+
+    function compararFactura() {
+        const input = document.getElementById('facturadoInput');
+        const display = document.getElementById('comparisonDisplay');
+        const facturado = parseFloat(input.value) || 0;
+        if (facturado === 0 && ultimoSubtotal === 0) {
+            display.innerHTML = `<span>Ingresa un importe para comparar</span>`;
+            return;
+        }
+        const base = ultimoSubtotal;
+        const diff = facturado - base;
+        const porcentaje = base !== 0 ? (diff / base) * 100 : 0;
+        if (diff > 0.01) {
+            display.innerHTML = `
+                <span>⚠️ Superior a la base tarifaria</span>
+                <span class="diff-error"><span class="diff-number">+${diff.toFixed(2)}</span> (+${porcentaje.toFixed(2)}%)</span>
+                <span style="font-size:14px; font-weight:400; color:var(--text-secondary);">(Facturado: $${facturado.toFixed(2)} vs Base: $${base.toFixed(2)})</span>
+            `;
+        } else {
+            let label = '✅ Coincide con la base';
+            if (diff < -0.01) label = '✅ Inferior (favorable) a la base';
+            display.innerHTML = `
+                <span>${label}</span>
+                <span class="diff-ok"><span class="diff-number">${diff.toFixed(2)}</span> (${porcentaje.toFixed(2)}%)</span>
+                <span style="font-size:14px; font-weight:400; color:var(--text-secondary);">(Facturado: $${facturado.toFixed(2)} vs Base: $${base.toFixed(2)})</span>
+            `;
+        }
+    }
+
+    // ================================================================
+    // 12. EXPORTAR / IMPORTAR / RESPALDO COMPLETO
+    // ================================================================
+    /**
+     * Construye el payload de respaldo con metadatos y conteos.
+     * Incluye TODOS los cuadros tarifarios (Hacha + Sevillanita),
+     * tarifas actuales, historial de versiones y períodos.
+     */
+    function construirRespaldoCompleto() {
+        guardarEstadoActual();
+        const resumen = {};
+        ['hacha', 'sevillanita'].forEach(key => {
+            const e = estados[key] || {};
+            resumen[key] = {
+                rutasActuales: Array.isArray(e.tarifas) ? e.tarifas.length : 0,
+                versionesHistorial: Array.isArray(e.historial) ? e.historial.length : 0,
+                periodoActual: e.periodoActual || '',
+                ultimoIdVersion: e.ultimoId || 0
+            };
+        });
+        return {
+            app: 'UNIBER · Tarifas Transporte Unificado',
+            formato: 'respaldo_tarifas_v2',
+            version: '2.0',
+            fecha: new Date().toISOString(),
+            generadoEn: typeof location !== 'undefined' ? (location.href || '') : '',
+            transporteActivoAlExportar: transporteActual,
+            resumen,
+            // Datos completos
+            estados: JSON.parse(JSON.stringify(estados)),
+            transporteActual
+        };
+    }
+
+    function descargarJSON(obj, filename) {
+        const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.endsWith('.json') ? filename : filename + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /** Exportación compatible (misma estructura ampliada) */
+    function exportarJSON() {
+        const data = construirRespaldoCompleto();
+        descargarJSON(data, `transportes_${new Date().toISOString().slice(0, 10)}.json`);
+        const r = data.resumen;
+        mostrarNotificacion(
+            `✅ JSON exportado · Hacha ${r.hacha.rutasActuales} rutas / ${r.hacha.versionesHistorial} ver. · Sevillanita ${r.sevillanita.rutasActuales} rutas / ${r.sevillanita.versionesHistorial} ver.`,
+            'success'
+        );
+    }
+
+    /** Botón dedicado: respaldo completo de todos los cuadros tarifarios */
+    function respaldoCompletoTarifas() {
+        const data = construirRespaldoCompleto();
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        descargarJSON(data, `Respaldo_Tarifas_Completo_${stamp}.json`);
+        const r = data.resumen;
+        mostrarNotificacion(
+            `💾 Respaldo completo generado · Hacha: ${r.hacha.rutasActuales} rutas, ${r.hacha.versionesHistorial} versiones · Sevillanita: ${r.sevillanita.rutasActuales} rutas, ${r.sevillanita.versionesHistorial} versiones`,
+            'success'
+        );
+    }
+
+    function aplicarDatosImportados(data) {
+        if (!data || !data.estados) {
+            throw new Error('Formato incorrecto: falta "estados".');
+        }
+        ['hacha', 'sevillanita'].forEach(key => {
+            if (data.estados[key]) {
+                estados[key].tarifas = data.estados[key].tarifas || estados[key].tarifas;
+                estados[key].historial = data.estados[key].historial || [];
+                estados[key].ultimoId = data.estados[key].ultimoId || 0;
+                estados[key].periodoActual = data.estados[key].periodoActual || '';
+            }
+        });
+        if (data.transporteActual) transporteActual = data.transporteActual;
+        else if (data.transporteActivoAlExportar) transporteActual = data.transporteActivoAlExportar;
+        guardarEnLocalStorage();
+        // Refrescar UI sin depender solo de cambiarTransporte (si es el mismo)
+        const prev = transporteActual;
+        restaurarEstado(transporteActual);
+        document.getElementById('transporteSelect').value = transporteActual;
+        actualizarSelectorVersiones();
+        actualizarDisplayPeriodo();
+        actualizarHeaderPeriodo();
+        renderizarTabla();
+        llenarSelectores();
+        actualizarSelectoresComparacion();
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+        calcular();
+        // Si hay que forzar redibujo de logo/título
+        if (typeof cambiarTransporte === 'function') {
+            // truco: forzar UI del transporte
+            const t = transporteActual;
+            transporteActual = t === 'hacha' ? 'sevillanita' : 'hacha';
+            cambiarTransporte(t);
+        }
+    }
+
+    function importarJSON(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data.estados) { alert('Formato incorrecto: no se encontró "estados".'); return; }
+                aplicarDatosImportados(data);
+                mostrarNotificacion('✅ Datos importados correctamente.', 'success');
+            } catch (err) { alert('Error: ' + err.message); }
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    function restaurarRespaldoCompleto(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data.estados) {
+                    alert('El archivo no es un respaldo válido (falta "estados").');
+                    return;
+                }
+                const r = data.resumen || {};
+                const msgH = r.hacha
+                    ? `Hacha: ${r.hacha.rutasActuales || 0} rutas, ${r.hacha.versionesHistorial || 0} versiones`
+                    : 'Hacha: (sin resumen)';
+                const msgS = r.sevillanita
+                    ? `Sevillanita: ${r.sevillanita.rutasActuales || 0} rutas, ${r.sevillanita.versionesHistorial || 0} versiones`
+                    : 'Sevillanita: (sin resumen)';
+                const ok = confirm(
+                    '¿Restaurar este respaldo?\n\n' +
+                    'Se reemplazarán las tarifas y versiones actuales en este navegador.\n\n' +
+                    (data.fecha ? 'Fecha del respaldo: ' + data.fecha + '\n' : '') +
+                    msgH + '\n' + msgS + '\n\n' +
+                    'Esta acción no se puede deshacer (salvo que tengas otro respaldo).'
+                );
+                if (!ok) return;
+                aplicarDatosImportados(data);
+                mostrarNotificacion('♻️ Respaldo restaurado correctamente.', 'success');
+            } catch (err) {
+                alert('No se pudo restaurar: ' + err.message);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    function exportarExcel() {
+        const data = tarifas.map(r => ({
+            ORIGEN: r.ORIGEN||'',
+            DESTINO: r.DESTINO||'',
+            'KG (<500)': r.KG||0,
+            '500-999 KG': r['500-999 KG']||0,
+            'MAS 1000 KG': r['MAS 1000 KG']||0,
+            MINIMOS: r.MINIMOS||0,
+            M3: r.M3||0
+        }));
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [{wch:15},{wch:15},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
+        XLSX.utils.book_append_sheet(wb, ws, 'Tarifas');
+        XLSX.writeFile(wb, `tarifas_${transporteActual}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        mostrarNotificacion('✅ Excel exportado.','success');
+    }
+
+    // ================================================================
+    // 13. CARGA EXCEL - CORREGIDA (soporta formato plano en ambos transportes)
+    // ================================================================
+    function cargarExcel(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type:'array' });
+                pendingExcelFile = workbook;
+                const sheetNames = workbook.SheetNames;
+                if (sheetNames.length > 1) {
+                    document.getElementById('sheetSelector').style.display = 'inline-block';
+                    const select = document.getElementById('sheetSelect');
+                    select.innerHTML = '';
+                    sheetNames.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        select.appendChild(opt);
+                    });
+                    document.getElementById('excelInput').value = '';
+                    mostrarNotificacion('Seleccione la hoja a importar.','info');
+                } else {
+                    procesarHojaExcel(workbook, sheetNames[0]);
+                }
+            } catch(err) { alert('Error: '+err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function procesarHojaExcel(workbook, sheetName) {
+        const sheet = workbook.Sheets[sheetName];
+        // Usar header:1 y luego procesar para manejar mejor filas vacías y espacios
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+        if (!json || json.length === 0) { 
+            alert('La hoja está vacía.'); 
+            return; 
+        }
+
+        // Función auxiliar robusta para obtener valor ignorando espacios y mayúsculas
+        const getVal = (row, posiblesNombres) => {
+            const keys = Object.keys(row);
+            for (const nombre of posiblesNombres) {
+                const key = keys.find(k => k.trim().toUpperCase() === nombre.trim().toUpperCase());
+                if (key !== undefined) {
+                    const val = row[key];
+                    if (val === null || val === undefined || val === '') return '';
+                    return String(val).trim();
+                }
+            }
+            return '';
+        };
+
+        const getNum = (row, posiblesNombres) => {
+            const str = getVal(row, posiblesNombres);
+            const num = parseFloat(str.replace(',', '.'));
+            return isNaN(num) ? 0 : Math.max(0, num);
+        };
+
+        // Detectar si es formato plano (tiene columnas tipo ORIGEN / DESTINO / KG)
+        const primera = json[0] || {};
+        const clavesNormalizadas = Object.keys(primera).map(k => k.trim().toUpperCase());
+        const esFormatoPlano = clavesNormalizadas.some(k => 
+            k === 'ORIGEN' || k === 'DESTINO' || k === 'KG' || 
+            k.includes('500-999') || k.includes('MAS 1000') || k === 'MINIMOS' || k === 'M3'
+        );
+
+        let nuevas = [];
+
+        if (esFormatoPlano) {
+            // ===== FORMATO PLANO (funciona para Hacha y Sevillanita) =====
+            nuevas = json.map(row => ({
+                ORIGEN: getVal(row, ['ORIGEN', 'Origen', 'origen', 'ORIGEN ']),
+                DESTINO: getVal(row, ['DESTINO', 'Destino', 'destino', 'DESTINO ']),
+                KG: getNum(row, ['KG', 'kg', 'KG ', 'KG (<500)', 'KG(<500)']),
+                '500-999 KG': getNum(row, ['500-999 KG', '500-999', '500_999', '500-999KG']),
+                'MAS 1000 KG': getNum(row, ['MAS 1000 KG', 'MAS 1000', 'MAS1000', 'MAS 1000KG', 'A PARTIR DE 1000']),
+                MINIMOS: getNum(row, ['MINIMOS', 'Minimos', 'minimos', 'MINIMO', 'Mínimos']),
+                M3: getNum(row, ['M3', 'm3', 'M³', 'METRO CUBICO'])
+            })).filter(r => r.ORIGEN && r.DESTINO);
+        } else {
+            // ===== FORMATO ANTIGUO DE SEVILLANITA (DESDE / HASTA / DETALLE) =====
+            const get = (row, name) => {
+                const key = Object.keys(row).find(k => k.trim().toUpperCase() === name.toUpperCase().trim());
+                return key !== undefined ? row[key] : null;
+            };
+            const filas = json.map(row => ({
+                desde: String(get(row,'DESDE')||row['DESDE']||'').trim(),
+                hasta: String(get(row,'HASTA')||row['HASTA']||'').trim(),
+                detalle: String(get(row,'DETALLE')||row['DETALLE']||'').trim(),
+                rango: String(get(row,'RANGO DE KG')||row['RANGO DE KG']||'').trim(),
+                precio: parseFloat(get(row,'PRECIO')||row['PRECIO']||0)||0,
+                minimo: parseFloat(get(row,'MINIMO')||row['MINIMO']||0)||0
+            })).filter(f => f.desde && f.hasta);
+
+            const grupos = {};
+            filas.forEach(f => {
+                let origen = f.desde, destino = f.hasta;
+                if (origen === 'BS BS') origen = 'BS AS';
+                if (destino === 'BS BS') destino = 'BS AS';
+                if (origen === 'R NORTE') origen = 'RAMAL NORTE';
+                if (destino === 'R NORTE') destino = 'RAMAL NORTE';
+                if (origen === 'R PCIAL') origen = 'RAMAL SUR';
+                if (destino === 'R PCIAL') destino = 'RAMAL SUR';
+                const key = `${origen}|${destino}`;
+                if (!grupos[key]) {
+                    grupos[key] = { ORIGEN:origen, DESTINO:destino, KG:0, '500-999 KG':0, 'MAS 1000 KG':0, MINIMOS:0, M3:0, tieneM3:false, tieneKG:false };
+                }
+                const g = grupos[key];
+                if (f.detalle.includes('POR METRO CUBICO')) { 
+                    g.M3 = Math.max(0, f.precio); 
+                    g.tieneM3 = true; 
+                } else if (f.detalle.includes('POR KILO')) {
+                    const r = f.rango.toUpperCase().trim();
+                    if (r.includes('HASTA 499')) g.KG = Math.max(0, f.precio);
+                    else if (r.includes('DE 500 A 999')) g['500-999 KG'] = Math.max(0, f.precio);
+                    else if (r.includes('A PARTIR DE 1000')) g['MAS 1000 KG'] = Math.max(0, f.precio);
+                    g.MINIMOS = Math.max(0, f.minimo);
+                    g.tieneKG = true;
+                }
+            });
+            nuevas = Object.values(grupos).map(g => ({
+                ORIGEN: g.ORIGEN, 
+                DESTINO: g.DESTINO,
+                KG: g.tieneKG ? g.KG : 0,
+                '500-999 KG': g.tieneKG ? g['500-999 KG'] : 0,
+                'MAS 1000 KG': g.tieneKG ? g['MAS 1000 KG'] : 0,
+                MINIMOS: g.tieneKG ? g.MINIMOS : 0,
+                M3: g.tieneM3 ? g.M3 : 0
+            }));
+        }
+
+        if (nuevas.length === 0) { 
+            alert('No se encontraron rutas válidas.\n\nVerificá que el Excel tenga columnas: origen, destino, KG, 500-999 KG, MAS 1000 KG, MINIMOS, M3'); 
+            return; 
+        }
+
+        const errores = validarDatos(nuevas);
+        if (errores.length) { 
+            alert('Errores en datos:\n' + errores.join('\n')); 
+            return; 
+        }
+
+        const periodo = prompt('Ingrese el período para estas tarifas (ej. "Julio 2026"):') || '';
+        tarifas = nuevas;
+        guardarVersion(periodo);
+        renderizarTabla();
+        llenarSelectores();
+        calcular();
+        document.getElementById('buscarInput').value = '';
+        aplicarFiltros();
+        mostrarNotificacion(`✅ ${tarifas.length} rutas cargadas desde Excel (${sheetName}). Período: ${periodo || 'sin período'}`,'success');
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+        document.getElementById('sheetSelector').style.display = 'none';
+        pendingExcelFile = null;
+    }
+
+    // ================================================================
+    // 14. LIMPIAR CAMPOS
+    // ================================================================
+    function limpiarCampos() {
+        document.getElementById('origenSelect').value = '';
+        document.getElementById('destinoSelect').innerHTML = '<option value="">-- Seleccionar --</option>';
+        document.getElementById('kgInput').value = '0';
+        document.getElementById('m3Input').value = '0';
+        document.getElementById('facturadoInput').value = '0';
+        document.getElementById('resultados').style.display = 'none';
+        document.getElementById('comparisonArea').style.display = 'none';
+    }
+
+    // ================================================================
+    // 15. CAMBIO DE TRANSPORTE
+    // ================================================================
+    function cambiarTransporte(nuevo) {
+        if (nuevo === transporteActual) return;
+        guardarEstadoActual();
+        transporteActual = nuevo;
+        restaurarEstado(transporteActual);
+        const logoSvg = document.getElementById('logoSvg');
+        const titulo = document.getElementById('tituloEmpresa');
+        const subtitulo = document.getElementById('subtituloEmpresa');
+        if (transporteActual === 'hacha') {
+            logoSvg.innerHTML = `<svg width="56" height="56" viewBox="0 0 50 50"><rect x="19" y="12" width="12" height="32" rx="4" fill="#8B5A2B"/><rect x="22" y="14" width="6" height="28" rx="2" fill="#A06B3F"/><path d="M25 8 L40 18 L25 28 L10 18 Z" fill="#5A5A5A" stroke="#333" stroke-width="1.5"/><path d="M25 12 L35 18 L25 24 L15 18 Z" fill="#7A7A7A"/><path d="M25 14 L30 18 L25 22 L20 18 Z" fill="#9A9A9A"/><circle cx="25" cy="34" r="3" fill="#6B4A2B"/><circle cx="30" cy="16" r="1.5" fill="white" opacity="0.6"/></svg>`;
+            titulo.textContent = 'Transporte Hacha de Piedra';
+            subtitulo.textContent = 'Tarifas, cálculo y control de fletes';
+            document.title = 'Tarifas - Transporte Hacha de Piedra';
+        } else {
+            logoSvg.innerHTML = `<svg width="56" height="56" viewBox="0 0 50 50"><circle cx="25" cy="25" r="10" fill="#F9A825"/><circle cx="25" cy="25" r="5" fill="#FFD54F"/><path d="M25 5 L28 15 L22 15 Z" fill="#F9A825"/><path d="M25 45 L28 35 L22 35 Z" fill="#F9A825"/><path d="M5 25 L15 28 L15 22 Z" fill="#F9A825"/><path d="M45 25 L35 28 L35 22 Z" fill="#F9A825"/><path d="M10 10 L18 18 L14 22 L6 14 Z" fill="#F9A825"/><path d="M40 40 L32 32 L36 28 L44 36 Z" fill="#F9A825"/><path d="M10 40 L18 32 L14 28 L6 36 Z" fill="#F9A825"/><path d="M40 10 L32 18 L36 22 L44 14 Z" fill="#F9A825"/></svg>`;
+            titulo.textContent = 'Transporte Sevillanita';
+            subtitulo.textContent = 'Tarifas, cálculo y control de fletes';
+            document.title = 'Tarifas - Transporte Sevillanita';
+        }
+        document.getElementById('transporteSelect').value = transporteActual;
+        actualizarSelectorVersiones();
+        actualizarDisplayPeriodo();
+        actualizarHeaderPeriodo();
+        renderizarTabla();
+        llenarSelectores();
+        calcular();
+        document.getElementById('buscarInput').value = '';
+        aplicarFiltros();
+        document.getElementById('compareResults').style.display = 'none';
+        document.getElementById('compareDetailContainer').style.display = 'none';
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+        actualizarSelectoresComparacion();
+        guardarEnLocalStorage();
+        mostrarNotificacion(`🔄 Cambiado a ${titulo.textContent}`,'info');
+    }
+
+    // ================================================================
+    // 16. ELIMINAR VERSIÓN
+    // ================================================================
+    function eliminarVersionSeleccionada() {
+        const selector = document.getElementById('versionSelector');
+        const id = selector.value;
+        if (!id) { mostrarNotificacion('No se puede eliminar la actual.','warning'); return; }
+        const version = historialTarifas.find(v => v.id === parseInt(id));
+        if (!version) { mostrarNotificacion('Versión no encontrada.','error'); return; }
+        if (confirm(`¿Eliminar Versión ${version.id} (${version.periodo||'sin período'})?`)) {
+            historialTarifas = historialTarifas.filter(v => v.id !== parseInt(id));
+            actualizarSelectorVersiones();
+            if (parseInt(id) === ultimoIdVersion) { 
+                selector.value = ''; 
+                document.getElementById('eliminarVersionBtn').style.display = 'none'; 
+            } else {
+                if (!selector.value || !historialTarifas.find(v=>v.id===parseInt(selector.value))) {
+                    selector.value = '';
+                    document.getElementById('eliminarVersionBtn').style.display = 'none';
+                }
+            }
+            guardarEstadoActual();
+            mostrarNotificacion(`🗑️ Versión ${version.id} eliminada.`,'success');
+            actualizarGraficoComparacion();
+            actualizarGraficoEvolucion();
+            actualizarAnalisisEstacional();
+            actualizarSelectoresComparacion();
+        }
+    }
+
+    // ================================================================
+    // 17. MODO OSCURO
+    // ================================================================
+    function toggleDarkMode() {
+        const html = document.documentElement;
+        if (html.getAttribute('data-theme') === 'dark') {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        } else {
+            html.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        }
+        // Actualizar colores de gráficos
+        [chartInstance, chartInstanceEvo, chartInstanceSeason, chartInstanceMonth].forEach(ch => {
+            if (!ch) return;
+            try {
+                const color = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim() || '#2c3e50';
+                if (ch.options.plugins?.datalabels) ch.options.plugins.datalabels.color = color;
+                if (ch.options.plugins?.legend?.labels) ch.options.plugins.legend.labels.color = color;
+                if (ch.options.scales?.y?.ticks) ch.options.scales.y.ticks.color = color;
+                if (ch.options.scales?.x?.ticks) ch.options.scales.x.ticks.color = color;
+                if (ch.options.scales?.y?.title) ch.options.scales.y.title.color = color;
+                if (ch.options.scales?.x?.title) ch.options.scales.x.title.color = color;
+                ch.update();
+            } catch(e) {}
+        });
+    }
+
+    // ================================================================
+    // 18. TABLA DETALLADA DE COMPARACIÓN
+    // ================================================================
+    function toggleDetailTable() {
+        const container = document.getElementById('compareDetailContainer');
+        compareDetailVisible = !compareDetailVisible;
+        if (compareDetailVisible) {
+            container.style.display = 'block';
+            document.getElementById('toggleDetailBtn').textContent = '📋 Ocultar tabla detallada';
+            renderizarTablaDetallada();
+        } else {
+            container.style.display = 'none';
+            document.getElementById('toggleDetailBtn').textContent = '📋 Mostrar tabla detallada';
+        }
+    }
+
+    function renderizarTablaDetallada() {
+        const container = document.getElementById('compareDetailTable');
+        const rows = window._detailRows || [];
+        const campos = window._campos || [];
+        const nombres = window._nombresCampos || {};
+        if (rows.length === 0) { container.innerHTML = '<p>No hay datos.</p>'; return; }
+        let html = `<table><thead><tr><th>Ruta</th>`;
+        campos.forEach(c => html += `<th>${nombres[c]||c}</th>`);
+        html += `</tr></thead><tbody>`;
+        rows.forEach(row => {
+            html += `<tr><td>${row.ruta.replace('|',' → ')}</td>`;
+            campos.forEach(c => {
+                const diff = row[c] || 0;
+                let cls = '';
+                if (diff > 0.1) cls = 'diff-pos';
+                else if (diff < -0.1) cls = 'diff-neg';
+                html += `<td class="${cls}">${diff.toFixed(2)}%</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function compararDosVersiones() {
+        const selA = document.getElementById('compareVersionSelectA');
+        const selB = document.getElementById('compareVersionSelectB');
+        const idA = selA.value;
+        const idB = selB.value;
+        if (!idA || !idB || idA === idB) {
+            mostrarNotificacion('Seleccioná dos versiones distintas.','warning');
+            return;
+        }
+        const getData = (id) => {
+            if (id === 'actual') return tarifas;
+            const v = historialTarifas.find(v => v.id === parseInt(id));
+            return v ? v.data : null;
+        };
+        const dataA = getData(idA);
+        const dataB = getData(idB);
+        if (!dataA || !dataB) {
+            mostrarNotificacion('No se encontraron datos.','error');
+            return;
+        }
+
+        const campos = ['KG', '500-999 KG', 'MAS 1000 KG', 'MINIMOS', 'M3'];
+        const nombres = { 'KG':'KG (<500)', '500-999 KG':'500-999 KG', 'MAS 1000 KG':'MAS 1000 KG', 'MINIMOS':'Mínimos', 'M3':'M3' };
+
+        // Promedios
+        const prom = (arr, c) => arr.length ? arr.reduce((s,r)=>s+(r[c]||0),0)/arr.length : 0;
+        const promsA = campos.map(c => prom(dataA, c));
+        const promsB = campos.map(c => prom(dataB, c));
+
+        const grid = document.getElementById('compareResultsGrid');
+        grid.innerHTML = campos.map((c,i) => {
+            const a = promsA[i], b = promsB[i];
+            const diff = b !== 0 ? ((a - b) / b * 100) : 0;
+            const cls = diff > 0.5 ? 'positive' : (diff < -0.5 ? 'negative' : 'neutral');
+            return `<div class="compare-item"><div class="label">${nombres[c]}</div><div class="value ${cls}">${diff.toFixed(2)}%</div></div>`;
+        }).join('');
+
+        // Detalle por ruta
+        const rutasA = new Map(dataA.map(r => [`${r.ORIGEN}|${r.DESTINO}`, r]));
+        const rutasB = new Map(dataB.map(r => [`${r.ORIGEN}|${r.DESTINO}`, r]));
+        const allKeys = new Set([...rutasA.keys(), ...rutasB.keys()]);
+        const detailRows = [];
+        allKeys.forEach(key => {
+            const ra = rutasA.get(key) || {};
+            const rb = rutasB.get(key) || {};
+            const row = { ruta: key };
+            campos.forEach(c => {
+                const va = ra[c] || 0, vb = rb[c] || 0;
+                row[c] = vb !== 0 ? ((va - vb) / vb * 100) : 0;
+            });
+            detailRows.push(row);
+        });
+        window._detailRows = detailRows;
+        window._campos = campos;
+        window._nombresCampos = nombres;
+
+        document.getElementById('compareResults').style.display = 'block';
+        actualizarGraficoComparacion();
+    }
+
+    // ================================================================
+    // 19. INICIALIZACIÓN Y EVENTOS
+    // ================================================================
+    function init() {
+        const cargado = cargarDesdeLocalStorage();
+        if (!cargado) guardarEnLocalStorage();
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme','dark');
+
+        restaurarEstado(transporteActual);
+        // Forzar UI del transporte actual
+        const logoSvg = document.getElementById('logoSvg');
+        const titulo = document.getElementById('tituloEmpresa');
+        if (transporteActual === 'hacha') {
+            logoSvg.innerHTML = `<svg width="56" height="56" viewBox="0 0 50 50"><rect x="19" y="12" width="12" height="32" rx="4" fill="#8B5A2B"/><rect x="22" y="14" width="6" height="28" rx="2" fill="#A06B3F"/><path d="M25 8 L40 18 L25 28 L10 18 Z" fill="#5A5A5A" stroke="#333" stroke-width="1.5"/><path d="M25 12 L35 18 L25 24 L15 18 Z" fill="#7A7A7A"/><path d="M25 14 L30 18 L25 22 L20 18 Z" fill="#9A9A9A"/><circle cx="25" cy="34" r="3" fill="#6B4A2B"/><circle cx="30" cy="16" r="1.5" fill="white" opacity="0.6"/></svg>`;
+            titulo.textContent = 'Transporte Hacha de Piedra';
+        } else {
+            logoSvg.innerHTML = `<svg width="56" height="56" viewBox="0 0 50 50"><circle cx="25" cy="25" r="10" fill="#F9A825"/><circle cx="25" cy="25" r="5" fill="#FFD54F"/><path d="M25 5 L28 15 L22 15 Z" fill="#F9A825"/><path d="M25 45 L28 35 L22 35 Z" fill="#F9A825"/><path d="M5 25 L15 28 L15 22 Z" fill="#F9A825"/><path d="M45 25 L35 28 L35 22 Z" fill="#F9A825"/><path d="M10 10 L18 18 L14 22 L6 14 Z" fill="#F9A825"/><path d="M40 40 L32 32 L36 28 L44 36 Z" fill="#F9A825"/><path d="M10 40 L18 32 L14 28 L6 36 Z" fill="#F9A825"/><path d="M40 10 L32 18 L36 22 L44 14 Z" fill="#F9A825"/></svg>`;
+            titulo.textContent = 'Transporte Sevillanita';
+        }
+        document.getElementById('transporteSelect').value = transporteActual;
+
+        actualizarSelectorVersiones();
+        actualizarDisplayPeriodo();
+        actualizarHeaderPeriodo();
+        renderizarTabla();
+        llenarSelectores();
+        actualizarSelectoresComparacion();
+
+        document.getElementById('origenSelect').addEventListener('change', function() { llenarSelectores(); calcular(); });
+        document.getElementById('destinoSelect').addEventListener('change', calcular);
+        document.getElementById('kgInput').addEventListener('input', calcular);
+        document.getElementById('m3Input').addEventListener('input', calcular);
+        document.getElementById('calcularBtn').addEventListener('click', calcular);
+        document.getElementById('limpiarBtn').addEventListener('click', limpiarCampos);
+        document.getElementById('facturadoInput').addEventListener('input', compararFactura);
+
+        document.getElementById('agregarFilaBtn').addEventListener('click', agregarFila);
+        document.getElementById('guardarCambiosBtn').addEventListener('click', guardarCambiosTabla);
+
+        document.getElementById('guardarVersionBtn').addEventListener('click', function() {
+            const periodo = prompt('Ingrese un período para esta versión:') || '';
+            guardarVersion(periodo);
+        });
+        document.getElementById('versionSelector').addEventListener('change', function() {
+            const id = this.value;
+            if (id === '') { 
+                mostrarNotificacion('📌 Usando versión actual','info'); 
+                document.getElementById('eliminarVersionBtn').style.display = 'none'; 
+                return; 
+            }
+            document.getElementById('eliminarVersionBtn').style.display = 'inline-block';
+            cargarVersionDesdeHistorial(id);
+        });
+        document.getElementById('eliminarVersionBtn').addEventListener('click', eliminarVersionSeleccionada);
+
+        document.getElementById('transporteSelect').addEventListener('change', function() {
+            cambiarTransporte(this.value);
+        });
+
+        document.getElementById('compareVersionSelectA').addEventListener('change', function() {
+            actualizarSelectoresComparacion();
+            actualizarGraficoComparacion();
+        });
+        document.getElementById('compareVersionSelectB').addEventListener('change', function() {
+            actualizarSelectoresComparacion();
+            actualizarGraficoComparacion();
+        });
+        document.getElementById('compareBtn').addEventListener('click', compararDosVersiones);
+
+        document.getElementById('filterOrigen').addEventListener('input', aplicarFiltros);
+        document.getElementById('filterDestino').addEventListener('input', aplicarFiltros);
+        document.querySelectorAll('#filtersRow input[type="number"]').forEach(inp => inp.addEventListener('input', aplicarFiltros));
+        document.getElementById('clearFiltersBtn').addEventListener('click', function() {
+            document.querySelectorAll('#filtersRow input').forEach(inp => inp.value = '');
+            aplicarFiltros();
+        });
+
+        document.querySelectorAll('#tarifasTable th[data-col]').forEach(th => {
+            th.addEventListener('click', function() {
+                ordenarTabla(this.dataset.col);
+            });
+        });
+
+        document.getElementById('buscarInput').addEventListener('input', function() {
+            const texto = this.value.toLowerCase().trim();
+            document.getElementById('filterOrigen').value = texto;
+            document.getElementById('filterDestino').value = texto;
+            aplicarFiltros();
+        });
+
+        document.getElementById('exportarBtn').addEventListener('click', exportarJSON);
+        document.getElementById('importarBtn').addEventListener('click', function() { document.getElementById('importFileInput').click(); });
+        document.getElementById('importFileInput').addEventListener('change', function(e) {
+            if (this.files && this.files[0]) importarJSON(this.files[0]);
+            this.value = '';
+        });
+        document.getElementById('exportExcelBtn').addEventListener('click', exportarExcel);
+
+        // Respaldo completo de todos los cuadros tarifarios
+        document.getElementById('btnRespaldoCompleto')?.addEventListener('click', respaldoCompletoTarifas);
+        document.getElementById('btnRespaldoHeader')?.addEventListener('click', respaldoCompletoTarifas);
+        document.getElementById('btnRestaurarRespaldo')?.addEventListener('click', function() {
+            document.getElementById('restoreBackupInput').click();
+        });
+        document.getElementById('restoreBackupInput')?.addEventListener('change', function() {
+            if (this.files && this.files[0]) restaurarRespaldoCompleto(this.files[0]);
+            this.value = '';
+        });
+
+        document.getElementById('excelInput').addEventListener('change', function(e) {
+            if (this.files && this.files[0]) cargarExcel(this.files[0]);
+            this.value = '';
+        });
+        document.getElementById('confirmSheetBtn').addEventListener('click', function() {
+            const select = document.getElementById('sheetSelect');
+            if (pendingExcelFile && select.value) procesarHojaExcel(pendingExcelFile, select.value);
+            else mostrarNotificacion('Seleccione una hoja.','warning');
+        });
+
+        document.getElementById('toggleDetailBtn').addEventListener('click', toggleDetailTable);
+        document.getElementById('darkToggle').addEventListener('click', toggleDarkMode);
+
+        // Menú responsive móvil
+        (function initMobileMenu() {
+            const btn = document.getElementById('btnMenuToggle');
+            const nav = document.getElementById('headerNav');
+            const backdrop = document.getElementById('navBackdrop');
+            if (!btn || !nav) return;
+            const setOpen = (open) => {
+                document.body.classList.toggle('menu-open', open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            };
+            const toggle = () => setOpen(!document.body.classList.contains('menu-open'));
+            const close = () => setOpen(false);
+            btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+            if (backdrop) backdrop.addEventListener('click', close);
+            nav.querySelectorAll('a, button').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (window.matchMedia('(max-width: 900px)').matches) close();
+                });
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') close();
+            });
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 900) close();
+            });
+        })();
+
+        // Botón de retroceso (vuelve a la página anterior del historial)
+        function irAtras() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                mostrarNotificacion('No hay página anterior en el historial', 'info');
+            }
+        }
+        document.getElementById('btnRetroceso')?.addEventListener('click', irAtras);
+        document.getElementById('btnRetrocesoNav')?.addEventListener('click', irAtras);
+
+        // Abrir módulos en nueva pestaña (no sale del Tarifario)
+        function abrirEnNuevaPestana(url) {
+            if (!url) return;
+            const w = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!w) mostrarNotificacion('Permití ventanas emergentes para abrir en nueva pestaña', 'warning');
+        }
+        window.abrirEnNuevaPestana = abrirEnNuevaPestana;
+        document.getElementById('btnAbrirComprobantes')?.addEventListener('click', () => {
+            const url = (typeof UniberBridge !== 'undefined' && UniberBridge.linkToComprobantes)
+                ? UniberBridge.linkToComprobantes()
+                : 'comprobantes.html';
+            abrirEnNuevaPestana(url);
+        });
+        document.getElementById('btnAbrirLogitrack')?.addEventListener('click', () => {
+            const url = (typeof UniberBridge !== 'undefined' && UniberBridge.linkToLogiTrack)
+                ? UniberBridge.linkToLogiTrack('')
+                : 'logitrack.html';
+            abrirEnNuevaPestana(url);
+        });
+        document.getElementById('btnAbrirFletes')?.addEventListener('click', () => {
+            const url = (typeof UniberBridge !== 'undefined' && UniberBridge.linkToFletesPro)
+                ? UniberBridge.linkToFletesPro('')
+                : 'fletes-pro.html';
+            abrirEnNuevaPestana(url);
+        });
+
+        document.getElementById('evoCampoSelect')?.addEventListener('change', actualizarGraficoEvolucion);
+        document.getElementById('evoRutaSelect')?.addEventListener('change', actualizarGraficoEvolucion);
+        document.getElementById('evoRefreshBtn')?.addEventListener('click', actualizarGraficoEvolucion);
+        document.getElementById('seasonCampoSelect')?.addEventListener('change', actualizarAnalisisEstacional);
+        document.getElementById('seasonRefreshBtn')?.addEventListener('click', actualizarAnalisisEstacional);
+
+        actualizarGraficoComparacion();
+        actualizarGraficoEvolucion();
+        actualizarAnalisisEstacional();
+        calcular();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

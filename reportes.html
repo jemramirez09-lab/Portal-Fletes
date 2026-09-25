@@ -1,0 +1,3693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23176a8a' width='32' height='32' rx='6'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='14' font-family='sans-serif' font-weight='700'%3EUB%3C/text%3E%3C/svg%3E">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="UNIBER Reportes · Comprobantes (paquetería) y Cortes semanales · Pareto 80/20 · evolución · tendencias">
+  <title>UNIBER · Reportes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* ========== SISTEMA DE VARIABLES DE TEMA ========== */
+    :root {
+      /* Base (original UNIBER) */
+      --bg: #eef2f5;
+      --bg-grad: linear-gradient(160deg, #eef2f5 0%, #e8eef3 100%);
+      --card: #ffffff;
+      --card-grad: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      --text: #0a2433;
+      --muted: #64748b;
+      --accent: #176a8a;
+      --accent2: #2f9bb8;
+      --border: #e2e8f0;
+      --phr: #d97706;
+      --ok: #16a34a;
+      --warn: #ea580c;
+      --shadow: 0 4px 16px rgba(0, 25, 40, 0.08);
+      --radius: 16px;
+      /* Superficies derivadas */
+      --surface-soft: rgba(23, 106, 138, 0.04);
+      --tabs-bg: rgba(23, 106, 138, 0.06);
+      --th-bg: linear-gradient(180deg, #e8f1f6 0%, #dceaf2 100%);
+      --th-color: #0a2433;
+      --th-border: var(--accent);
+      --row-even: rgba(23, 106, 138, 0.03);
+      --row-hover: rgba(23, 106, 138, 0.06);
+      --chip-active-bg: rgba(23, 106, 138, 0.12);
+      --chip-active-color: var(--accent);
+      --logo-grad: linear-gradient(135deg, #0a2433, #176a8a);
+      --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      /* Timing de transiciones */
+      --theme-duration: 0.45s;
+      --theme-ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --theme-fast: 0.3s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1720;
+        --bg-grad: linear-gradient(160deg, #0f1720 0%, #132530 100%);
+        --card: #172a36;
+        --card-grad: linear-gradient(180deg, #1a303e 0%, #172a36 100%);
+        --text: #e6f0f6;
+        --muted: #94a3b8;
+        --border: #2a3a4a;
+        --shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        --surface-soft: rgba(255, 255, 255, 0.04);
+        --tabs-bg: rgba(255, 255, 255, 0.05);
+        --th-bg: linear-gradient(180deg, #1e3545 0%, #1a303e 100%);
+        --th-color: #e6f0f6;
+        --row-even: rgba(255, 255, 255, 0.03);
+        --row-hover: rgba(47, 155, 184, 0.1);
+        --chip-active-bg: rgba(47, 155, 184, 0.15);
+        --logo-grad: linear-gradient(135deg, #0a2433, #2f9bb8);
+        --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    /* —— GEOMACO (rosa satinado) —— */
+    body.theme-geomaco {
+      --bg: #FDF2F7;
+      --bg-grad: linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+                 linear-gradient(160deg, #FFF7FB 0%, #FCE7F0 48%, #F9D5E5 100%);
+      --card: #FFFBFC;
+      --card-grad: linear-gradient(180deg, #FFFFFF 0%, #FFF5F9 100%);
+      --text: #0a2433;
+      --muted: #9F6B7C;
+      --accent: #E11D48;
+      --accent2: #BE123C;
+      --border: #F3D0DE;
+      --shadow: 0 4px 18px rgba(190, 24, 93, 0.08);
+      --surface-soft: rgba(252, 231, 240, 0.45);
+      --tabs-bg: linear-gradient(180deg, #FFF5F9, #FCE7F0);
+      --th-bg: linear-gradient(180deg, #FFF5F9 0%, #FCE7F0 100%);
+      --th-color: #9F1239;
+      --th-border: #E11D48;
+      --row-even: rgba(255, 245, 249, 0.55);
+      --row-hover: rgba(252, 231, 240, 0.6);
+      --chip-active-bg: rgba(225, 29, 72, 0.12);
+      --chip-active-color: #BE123C;
+      --logo-grad: linear-gradient(135deg, #9F1239, #E11D48);
+    }
+    @media (prefers-color-scheme: dark) {
+      body.theme-geomaco {
+        --bg: #2A1520;
+        --bg-grad: linear-gradient(160deg, #1F1218 0%, #2A1520 50%, #3B1F2C 100%);
+        --card: #3B1F2C;
+        --card-grad: linear-gradient(180deg, #452433 0%, #3B1F2C 100%);
+        --text: #FCE7F0;
+        --muted: #F9A8D4;
+        --accent: #FB7185;
+        --accent2: #F43F5E;
+        --border: #6B3048;
+        --shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        --surface-soft: rgba(251, 113, 133, 0.08);
+        --tabs-bg: rgba(75, 40, 55, 0.8);
+        --th-bg: linear-gradient(180deg, #3B1F2C 0%, #4A2535 100%);
+        --th-color: #FCE7F0;
+        --th-border: #FB7185;
+        --row-even: rgba(75, 40, 55, 0.4);
+        --row-hover: rgba(251, 113, 133, 0.12);
+        --chip-active-bg: rgba(251, 113, 133, 0.18);
+        --chip-active-color: #FB7185;
+        --logo-grad: linear-gradient(135deg, #9F1239, #FB7185);
+        --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    /* —— Abastecimiento (verde esmeralda satinado) —— */
+    body.theme-abastecimiento {
+      --bg: #ECFDF6;
+      --bg-grad: linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+                 linear-gradient(160deg, #F0FDF7 0%, #D1FAE5 50%, #A7F3D0 100%);
+      --card: #F7FDFB;
+      --card-grad: linear-gradient(180deg, #FFFFFF 0%, #ECFDF5 100%);
+      --text: #0a2433;
+      --muted: #4A7C68;
+      --accent: #059669;
+      --accent2: #047857;
+      --border: #B7EBD4;
+      --shadow: 0 4px 18px rgba(5, 150, 105, 0.08);
+      --surface-soft: rgba(209, 250, 229, 0.4);
+      --tabs-bg: linear-gradient(180deg, #ECFDF5, #D1FAE5);
+      --th-bg: linear-gradient(180deg, #ECFDF5 0%, #D1FAE5 100%);
+      --th-color: #065F46;
+      --th-border: #059669;
+      --row-even: rgba(236, 253, 245, 0.55);
+      --row-hover: rgba(167, 243, 208, 0.45);
+      --chip-active-bg: rgba(5, 150, 105, 0.12);
+      --chip-active-color: #047857;
+      --logo-grad: linear-gradient(135deg, #065F46, #059669);
+    }
+    @media (prefers-color-scheme: dark) {
+      body.theme-abastecimiento {
+        --bg: #0F2A1F;
+        --bg-grad: linear-gradient(160deg, #0A1F16 0%, #0F2A1F 50%, #143D2C 100%);
+        --card: #143D2C;
+        --card-grad: linear-gradient(180deg, #1A4A35 0%, #143D2C 100%);
+        --text: #D1FAE5;
+        --muted: #6EE7B7;
+        --accent: #34D399;
+        --accent2: #10B981;
+        --border: #1F5C40;
+        --shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        --surface-soft: rgba(52, 211, 153, 0.08);
+        --tabs-bg: rgba(26, 74, 53, 0.8);
+        --th-bg: linear-gradient(180deg, #143D2C 0%, #1A4A35 100%);
+        --th-color: #D1FAE5;
+        --th-border: #34D399;
+        --row-even: rgba(26, 74, 53, 0.35);
+        --row-hover: rgba(52, 211, 153, 0.12);
+        --chip-active-bg: rgba(52, 211, 153, 0.18);
+        --chip-active-color: #34D399;
+        --logo-grad: linear-gradient(135deg, #065F46, #34D399);
+        --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    /* —— Transferencias (mostaza satinado) —— */
+    body.theme-transferencias {
+      --bg: #FFFBEB;
+      --bg-grad: linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+                 linear-gradient(160deg, #FFFDF5 0%, #FEF3C7 50%, #FDE68A 100%);
+      --card: #FFFEF8;
+      --card-grad: linear-gradient(180deg, #FFFFFF 0%, #FFFBEB 100%);
+      --text: #0a2433;
+      --muted: #8B7355;
+      --accent: #D97706;
+      --accent2: #B45309;
+      --border: #F5E0A8;
+      --shadow: 0 4px 18px rgba(217, 119, 6, 0.09);
+      --surface-soft: rgba(254, 243, 199, 0.45);
+      --tabs-bg: linear-gradient(180deg, #FFFBEB, #FEF3C7);
+      --th-bg: linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%);
+      --th-color: #92400E;
+      --th-border: #D97706;
+      --row-even: rgba(255, 251, 235, 0.55);
+      --row-hover: rgba(253, 230, 138, 0.45);
+      --chip-active-bg: rgba(217, 119, 6, 0.12);
+      --chip-active-color: #B45309;
+      --logo-grad: linear-gradient(135deg, #92400E, #D97706);
+    }
+    @media (prefers-color-scheme: dark) {
+      body.theme-transferencias {
+        --bg: #2A2110;
+        --bg-grad: linear-gradient(160deg, #1A150A 0%, #2A2110 50%, #3D3018 100%);
+        --card: #3D3018;
+        --card-grad: linear-gradient(180deg, #4A3A1C 0%, #3D3018 100%);
+        --text: #FEF3C7;
+        --muted: #FCD34D;
+        --accent: #FBBF24;
+        --accent2: #F59E0B;
+        --border: #5C4A1F;
+        --shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        --surface-soft: rgba(251, 191, 36, 0.08);
+        --tabs-bg: rgba(74, 58, 28, 0.8);
+        --th-bg: linear-gradient(180deg, #3D3018 0%, #4A3A1C 100%);
+        --th-color: #FEF3C7;
+        --th-border: #FBBF24;
+        --row-even: rgba(74, 58, 28, 0.35);
+        --row-hover: rgba(251, 191, 36, 0.12);
+        --chip-active-bg: rgba(251, 191, 36, 0.18);
+        --chip-active-color: #FBBF24;
+        --logo-grad: linear-gradient(135deg, #92400E, #FBBF24);
+        --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    /* —— Clientes (azul petróleo satinado) —— */
+    body.theme-clientes {
+      --bg: #E6F2F4;
+      --bg-grad: linear-gradient(145deg, rgba(255,255,255,0.5) 0%, transparent 42%),
+                 linear-gradient(160deg, #F0F7F8 0%, #D4E8EC 50%, #B8D8DE 100%);
+      --card: #F5FAFB;
+      --card-grad: linear-gradient(180deg, #FFFFFF 0%, #E8F4F5 100%);
+      --text: #0a2433;
+      --muted: #4A6E76;
+      --accent: #0E4D5C;
+      --accent2: #0A3A45;
+      --border: #B5D4DA;
+      --shadow: 0 4px 18px rgba(14, 77, 92, 0.09);
+      --surface-soft: rgba(212, 232, 236, 0.45);
+      --tabs-bg: linear-gradient(180deg, #E8F4F5, #D4E8EC);
+      --th-bg: linear-gradient(180deg, #E8F4F5 0%, #CCE5E8 100%);
+      --th-color: #0A3A45;
+      --th-border: #0E4D5C;
+      --row-even: rgba(232, 244, 245, 0.55);
+      --row-hover: rgba(181, 212, 218, 0.4);
+      --chip-active-bg: rgba(14, 77, 92, 0.1);
+      --chip-active-color: #0A3A45;
+      --logo-grad: linear-gradient(135deg, #0A3A45, #0E4D5C);
+    }
+    @media (prefers-color-scheme: dark) {
+      body.theme-clientes {
+        --bg: #0A1F24;
+        --bg-grad: linear-gradient(160deg, #061418 0%, #0A1F24 50%, #12333A 100%);
+        --card: #12333A;
+        --card-grad: linear-gradient(180deg, #184850 0%, #12333A 100%);
+        --text: #E0F2F4;
+        --muted: #7DD3D8;
+        --accent: #5EEAD4;
+        --accent2: #2DD4BF;
+        --border: #1A4A54;
+        --shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        --surface-soft: rgba(94, 234, 212, 0.08);
+        --tabs-bg: rgba(24, 72, 80, 0.8);
+        --th-bg: linear-gradient(180deg, #12333A 0%, #184850 100%);
+        --th-color: #E0F2F4;
+        --th-border: #5EEAD4;
+        --row-even: rgba(24, 72, 80, 0.35);
+        --row-hover: rgba(94, 234, 212, 0.12);
+        --chip-active-bg: rgba(94, 234, 212, 0.18);
+        --chip-active-color: #5EEAD4;
+        --logo-grad: linear-gradient(135deg, #0A3A45, #5EEAD4);
+        --inset-shine: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    }
+
+    /* ========== TRANSICIONES GLOBALES ========== */
+    *,
+    *::before,
+    *::after {
+      transition-property: background-color, background, border-color, color, box-shadow, fill, stroke, transform, opacity;
+      transition-duration: 0s;
+      transition-timing-function: var(--theme-ease);
+    }
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: var(--bg-grad);
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.25rem;
+      transition:
+        background var(--theme-duration) var(--theme-ease),
+        background-color var(--theme-duration) var(--theme-ease),
+        color var(--theme-fast) var(--theme-ease);
+    }
+    .panel, .kpi, .chart-box, .table-wrap, .tabs,
+    .chip, .tab, .btn, table.rep th, table.rep td,
+    .brand .logo, a.back, .meta, .filters select, .filters input {
+      transition:
+        background var(--theme-duration) var(--theme-ease),
+        background-color var(--theme-duration) var(--theme-ease),
+        border-color var(--theme-fast) var(--theme-ease),
+        color var(--theme-fast) var(--theme-ease),
+        box-shadow var(--theme-fast) var(--theme-ease),
+        transform 0.18s var(--theme-ease);
+    }
+    .chip:hover, .tab:hover, .btn:hover {
+      transition-duration: 0.2s;
+    }
+    .chip:active { transform: scale(0.96); }
+    .tab:active { transform: scale(0.97); }
+    .btn:active { transform: scale(0.98); }
+
+    /* Aplicación de variables a componentes */
+    .panel {
+      background: var(--card-grad);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow), var(--inset-shine);
+    }
+    .kpi {
+      background: var(--card-grad);
+      border: 1px solid var(--border);
+      box-shadow: var(--inset-shine);
+    }
+    .tabs {
+      background: var(--tabs-bg);
+      border: 1px solid var(--border);
+    }
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .tab:hover:not(.active) {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-outline {
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-outline:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .chart-box, .table-wrap {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+    }
+    table.rep th {
+      background: var(--th-bg);
+      color: var(--th-color);
+      border-bottom: 2px solid var(--th-border);
+    }
+    table.rep td {
+      border-bottom-color: var(--border);
+      color: var(--text);
+    }
+    table.rep tr:nth-child(even) td {
+      background: var(--row-even);
+    }
+    table.rep tr:hover td {
+      background: var(--row-hover);
+    }
+    .chip.active {
+      border-color: var(--accent);
+      background: var(--chip-active-bg);
+      color: var(--chip-active-color);
+    }
+    .brand .logo {
+      background: var(--logo-grad);
+    }
+    a.back { color: var(--accent); }
+    .meta { color: var(--muted); }
+    .filters label { color: var(--muted); }
+    .filters select, .filters input {
+      background: var(--card);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .kpi .lab { color: var(--muted); }
+    .kpi .val { color: var(--text); }
+    .kpi .sub { color: var(--muted); }
+    .chart-box h4, .chart-box-head h4, .chart-title { color: var(--muted); }
+
+    /* Chips de unidad/tipo con acento sólido cuando activos */
+    #chipsUnidadComp .chip[data-unidad="GEOMACO"].active {
+      background: var(--accent) !important;
+      border-color: var(--accent2) !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+    #chipsTipoCortes .chip[data-tipo="abastecimiento"].active,
+    #chipsTipoCortes .chip[data-tipo="transferencias"].active,
+    #chipsTipoCortes .chip[data-tipo="clientes"].active {
+      background: var(--accent) !important;
+      border-color: var(--accent2) !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+
+
+    /* ========== ANIMACIONES AVANZADAS ========== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes chipPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    @keyframes themePulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    @keyframes shimmerBar {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes borderGlow {
+      0%, 100% { border-color: var(--border); }
+      50% { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+    }
+
+    .panel {
+      animation: fadeUp 0.5s var(--theme-ease) both;
+    }
+    .panel:nth-of-type(1) { animation-delay: 0.04s; }
+    .panel:nth-of-type(2) { animation-delay: 0.1s; }
+    .kpi {
+      animation: scaleIn 0.45s var(--theme-ease) both;
+    }
+    .kpis .kpi:nth-child(1) { animation-delay: 0.05s; }
+    .kpis .kpi:nth-child(2) { animation-delay: 0.1s; }
+    .kpis .kpi:nth-child(3) { animation-delay: 0.15s; }
+    .kpis .kpi:nth-child(4) { animation-delay: 0.2s; }
+    .kpis .kpi:nth-child(5) { animation-delay: 0.25s; }
+    .kpis .kpi:nth-child(6) { animation-delay: 0.3s; }
+    .kpis .kpi:nth-child(n+7) { animation-delay: 0.35s; }
+
+    .chip.theme-flash {
+      animation: chipPop 0.35s var(--theme-ease), themePulse 0.6s var(--theme-ease);
+    }
+    body.theme-switching .panel,
+    body.theme-switching .kpi,
+    body.theme-switching .chart-box,
+    body.theme-switching .table-wrap {
+      animation: borderGlow 0.7s var(--theme-ease);
+    }
+    .tab-panel.active {
+      animation: fadeIn 0.35s var(--theme-ease);
+    }
+    .chart-box {
+      animation: fadeUp 0.55s var(--theme-ease) both;
+    }
+    .table-wrap {
+      animation: slideInLeft 0.45s var(--theme-ease) both;
+    }
+    .chip:focus-visible,
+    .tab:focus-visible,
+    .btn:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* ========== prefers-reduced-motion ========== */
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --theme-duration: 0.01ms;
+        --theme-fast: 0.01ms;
+        --theme-ease: linear;
+      }
+
+      html {
+        scroll-behavior: auto !important;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition: none !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+      }
+
+      body,
+      .panel, .kpi, .chart-box, .table-wrap, .tabs,
+      .chip, .tab, .btn, table.rep th, table.rep td,
+      .brand .logo, a.back, .meta, .filters select, .filters input,
+      .tab-panel, .tab-panel.active {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+      }
+
+      /* Sin scale al pulsar */
+      .chip:active, .tab:active, .btn:active {
+        transform: none !important;
+      }
+
+      /* Estados finales sin motion */
+      .panel, .kpi, .chart-box, .table-wrap, .tab-panel.active {
+        opacity: 1 !important;
+      }
+
+      .chip.theme-flash,
+      body.theme-switching .panel,
+      body.theme-switching .kpi,
+      body.theme-switching .chart-box,
+      body.theme-switching .table-wrap {
+        animation: none !important;
+        box-shadow: inherit;
+      }
+
+      /* Chart.js tooltips / UI: sin fade largo */
+      .chart-tooltip {
+        transition: none !important;
+      }
+    }
+
+    /* ========== MODO ALTO CONTRASTE ========== */
+    /* Sistema / preferencia del SO */
+    @media (prefers-contrast: more) {
+      :root {
+        --bg: #ffffff;
+        --bg-grad: #ffffff;
+        --card: #ffffff;
+        --card-grad: #ffffff;
+        --text: #000000;
+        --muted: #1a1a1a;
+        --accent: #0000ee;
+        --accent2: #0000aa;
+        --border: #000000;
+        --shadow: none;
+        --surface-soft: #ffffff;
+        --tabs-bg: #f0f0f0;
+        --th-bg: #000000;
+        --th-color: #ffffff;
+        --th-border: #000000;
+        --row-even: #f5f5f5;
+        --row-hover: #e0e0e0;
+        --chip-active-bg: #000000;
+        --chip-active-color: #ffffff;
+        --logo-grad: #000000;
+        --inset-shine: none;
+      }
+      body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+      .panel, .kpi, .chart-box, .table-wrap, .tabs {
+        border-width: 2px !important;
+        box-shadow: none !important;
+      }
+      .btn-primary, .tab.active {
+        background: #000 !important;
+        color: #fff !important;
+        border: 2px solid #000 !important;
+      }
+      .btn-outline, .chip {
+        border-width: 2px !important;
+      }
+      a.back { color: #0000ee !important; text-decoration: underline; }
+      table.rep th {
+        background: #000 !important;
+        color: #fff !important;
+        border-bottom: 3px solid #000 !important;
+      }
+    }
+
+    /* Toggle manual: body.theme-contrast (prioridad sobre temas satinados) */
+    body.theme-contrast {
+      --bg: #ffffff !important;
+      --bg-grad: #ffffff !important;
+      --card: #ffffff !important;
+      --card-grad: #ffffff !important;
+      --text: #000000 !important;
+      --muted: #222222 !important;
+      --accent: #000000 !important;
+      --accent2: #333333 !important;
+      --border: #000000 !important;
+      --shadow: none !important;
+      --surface-soft: #ffffff !important;
+      --tabs-bg: #f0f0f0 !important;
+      --th-bg: #000000 !important;
+      --th-color: #ffffff !important;
+      --th-border: #000000 !important;
+      --row-even: #f2f2f2 !important;
+      --row-hover: #dddddd !important;
+      --chip-active-bg: #000000 !important;
+      --chip-active-color: #ffffff !important;
+      --logo-grad: #000000 !important;
+      --inset-shine: none !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+    }
+    body.theme-contrast .panel,
+    body.theme-contrast .kpi,
+    body.theme-contrast .chart-box,
+    body.theme-contrast .table-wrap,
+    body.theme-contrast .tabs {
+      background: #ffffff !important;
+      border: 2px solid #000 !important;
+      box-shadow: none !important;
+    }
+    body.theme-contrast .tab.active,
+    body.theme-contrast .btn-primary {
+      background: #000 !important;
+      color: #fff !important;
+      border: 2px solid #000 !important;
+    }
+    body.theme-contrast .btn-outline {
+      background: #fff !important;
+      color: #000 !important;
+      border: 2px solid #000 !important;
+    }
+    body.theme-contrast .chip {
+      border: 2px solid #000 !important;
+      background: #fff !important;
+      color: #000 !important;
+    }
+    body.theme-contrast .chip.active {
+      background: #000 !important;
+      color: #fff !important;
+      border-color: #000 !important;
+      font-weight: 700 !important;
+    }
+    body.theme-contrast table.rep th {
+      background: #000 !important;
+      color: #fff !important;
+      border-bottom: 3px solid #000 !important;
+    }
+    body.theme-contrast table.rep td {
+      color: #000 !important;
+      border-bottom: 1px solid #000 !important;
+    }
+    body.theme-contrast table.rep tr:nth-child(even) td {
+      background: #f2f2f2 !important;
+    }
+    body.theme-contrast table.rep tr:hover td {
+      background: #ddd !important;
+    }
+    body.theme-contrast a.back {
+      color: #000 !important;
+      text-decoration: underline;
+      font-weight: 700;
+    }
+    body.theme-contrast .brand .logo {
+      background: #000 !important;
+      color: #fff !important;
+    }
+    body.theme-contrast .meta,
+    body.theme-contrast .kpi .lab,
+    body.theme-contrast .kpi .sub,
+    body.theme-contrast .chart-box h4 {
+      color: #222 !important;
+    }
+    body.theme-contrast .kpi .val {
+      color: #000 !important;
+      font-weight: 800;
+    }
+    body.theme-contrast .filters select,
+    body.theme-contrast .filters input {
+      background: #fff !important;
+      color: #000 !important;
+      border: 2px solid #000 !important;
+    }
+    body.theme-contrast .btn-excel {
+      background: #000 !important;
+      color: #fff !important;
+      border: 2px solid #000 !important;
+    }
+    body.theme-contrast .btn-pdf {
+      background: #fff !important;
+      color: #000 !important;
+      border: 2px solid #000 !important;
+    }
+    body.theme-contrast #btnContrast.active {
+      background: #000 !important;
+      color: #fff !important;
+      outline: 3px solid #000;
+      outline-offset: 2px;
+    }
+
+    /* Oscuro + alto contraste */
+    @media (prefers-color-scheme: dark) {
+      body.theme-contrast {
+        --bg: #000000 !important;
+        --bg-grad: #000000 !important;
+        --card: #000000 !important;
+        --card-grad: #000000 !important;
+        --text: #ffffff !important;
+        --muted: #eeeeee !important;
+        --accent: #ffff00 !important;
+        --accent2: #ffff66 !important;
+        --border: #ffffff !important;
+        --tabs-bg: #111111 !important;
+        --th-bg: #ffff00 !important;
+        --th-color: #000000 !important;
+        --th-border: #ffffff !important;
+        --row-even: #1a1a1a !important;
+        --row-hover: #333333 !important;
+        --chip-active-bg: #ffff00 !important;
+        --chip-active-color: #000000 !important;
+        --logo-grad: #ffff00 !important;
+        background: #000 !important;
+        color: #fff !important;
+      }
+      body.theme-contrast .panel,
+      body.theme-contrast .kpi,
+      body.theme-contrast .chart-box,
+      body.theme-contrast .table-wrap,
+      body.theme-contrast .tabs {
+        background: #000 !important;
+        border: 2px solid #fff !important;
+      }
+      body.theme-contrast .tab.active,
+      body.theme-contrast .btn-primary {
+        background: #ffff00 !important;
+        color: #000 !important;
+        border: 2px solid #ffff00 !important;
+      }
+      body.theme-contrast .chip.active {
+        background: #ffff00 !important;
+        color: #000 !important;
+        border-color: #fff !important;
+      }
+      body.theme-contrast table.rep th {
+        background: #ffff00 !important;
+        color: #000 !important;
+        border-bottom: 3px solid #fff !important;
+      }
+      body.theme-contrast table.rep td {
+        color: #fff !important;
+        border-bottom-color: #fff !important;
+      }
+      body.theme-contrast a.back { color: #ffff00 !important; }
+      body.theme-contrast .brand .logo {
+        background: #ffff00 !important;
+        color: #000 !important;
+      }
+      body.theme-contrast .meta,
+      body.theme-contrast .kpi .lab,
+      body.theme-contrast .kpi .sub {
+        color: #eee !important;
+      }
+      body.theme-contrast .kpi .val { color: #fff !important; }
+      body.theme-contrast .filters select,
+      body.theme-contrast .filters input {
+        background: #000 !important;
+        color: #fff !important;
+        border: 2px solid #fff !important;
+      }
+    }
+
+    .btn-contrast {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+    }
+    .btn-contrast:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn-contrast.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .topbar {
+      max-width: 1200px; margin: 0 auto 1rem; display: flex; flex-wrap: wrap;
+      align-items: center; justify-content: space-between; gap: .75rem;
+    }
+    .brand { display: flex; align-items: center; gap: .65rem; }
+    .brand .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--logo-grad); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .75rem;
+    }
+    .brand h1 { font-size: 1.25rem; font-weight: 700; }
+    .brand p { font-size: .8rem; color: var(--muted); }
+    .btn {
+      padding: .4rem .9rem; border-radius: 20px; border: none; cursor: pointer;
+      font-weight: 600; font-size: .78rem; display: inline-flex; align-items: center; gap: .35rem;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-outline { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); }
+    .btn-outline:hover { background: var(--accent); color: #fff; }
+    .btn-excel { background: #1d6f42; color: #fff; }
+    .btn-pdf { background: #b91c1c; color: #fff; }
+    .btn-ghost { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+    a.back { color: var(--accent); text-decoration: none; font-weight: 600; font-size: .85rem; }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    .panel {
+      background: var(--card-grad); border-radius: var(--radius); box-shadow: var(--shadow), var(--inset-shine);
+      border: 1px solid var(--border); padding: 1.15rem 1.25rem; margin-bottom: 1rem;
+    }
+    .filters {
+      display: flex; flex-wrap: wrap; gap: .6rem .85rem; align-items: flex-end;
+    }
+    .filters label {
+      font-size: .7rem; font-weight: 600; color: var(--muted);
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .filters select, .filters input {
+      padding: .35rem .55rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); font-size: .82rem; min-width: 110px;
+    }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 1rem;
+      padding: .35rem; background: var(--tabs-bg); border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .tab {
+      padding: .4rem .95rem; border-radius: 20px; border: 1.5px solid transparent;
+      background: transparent; color: var(--muted); font-size: .78rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .tab:hover:not(.active) { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .kpis {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: .65rem; margin-bottom: .9rem;
+    }
+    .kpi {
+      background: var(--card-grad); border: 1px solid var(--border); border-radius: 12px;
+      padding: .65rem .8rem; text-align: center;
+      box-shadow: var(--inset-shine);
+    }
+    .kpi .lab {
+      font-size: .65rem; text-transform: uppercase; letter-spacing: .4px;
+      color: var(--muted); font-weight: 700;
+    }
+    .kpi .val {
+      font-size: 1.1rem; font-weight: 700; margin-top: .15rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi .sub { font-size: .68rem; color: var(--muted); margin-top: .1rem; }
+    .var-pos { color: #16a34a; font-weight: 700; }
+    .var-neg { color: #dc2626; font-weight: 700; }
+    .charts {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: .9rem;
+    }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-box {
+      background: var(--surface-soft); border-radius: 12px; padding: .55rem .65rem .4rem;
+      border: 1px solid var(--border); height: 240px; position: relative;
+    }
+    .chart-box.wide { grid-column: 1 / -1; height: 280px; }
+    .chart-box-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: .4rem; margin-bottom: .2rem; flex-wrap: wrap;
+    }
+    .chart-box-head h4 { margin: 0; flex: 1; min-width: 120px; }
+    .chart-tools {
+      display: inline-flex; gap: 2px; flex-wrap: wrap;
+    }
+    .chart-tools button {
+      font-size: .62rem; font-weight: 700; padding: .18rem .4rem;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: var(--card); color: var(--muted); cursor: pointer;
+      line-height: 1.2;
+    }
+    .chart-tools button:hover { border-color: var(--accent); color: var(--accent); }
+    .chart-tools button.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .chart-box canvas { cursor: crosshair; }
+
+    .chart-tooltip {
+      position: fixed; z-index: 9999; pointer-events: none;
+      opacity: 0; transform: translate(-50%, -100%) scale(0.96);
+      transition: opacity .15s ease, transform .15s ease;
+      background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.96));
+      color: #f8fafc; border-radius: 12px; padding: .55rem .75rem;
+      font-size: .75rem; line-height: 1.35;
+      box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.06);
+      min-width: 140px; max-width: 280px;
+    }
+    .chart-tooltip.show {
+      opacity: 1; transform: translate(-50%, calc(-100% - 10px)) scale(1);
+    }
+    .chart-tooltip .tt-title {
+      font-weight: 700; font-size: .78rem; margin-bottom: .3rem;
+      color: #e2e8f0; border-bottom: 1px solid rgba(255,255,255,.1);
+      padding-bottom: .25rem;
+    }
+    .chart-tooltip .tt-row {
+      display: flex; align-items: center; gap: .4rem; margin-top: .22rem;
+    }
+    .chart-tooltip .tt-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .chart-tooltip .tt-label { color: #94a3b8; flex: 1; }
+    .chart-tooltip .tt-val { font-weight: 700; color: #f8fafc; font-variant-numeric: tabular-nums; }
+    .chart-tooltip .tt-foot {
+      margin-top: .35rem; padding-top: .3rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+      font-size: .68rem; color: #94a3b8;
+    }
+    .chart-box h4 {
+      font-size: .72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .3px; margin: 0 0 .25rem .15rem;
+    }
+    .table-wrap {
+      max-height: 42vh; overflow: auto; border: 1px solid var(--border);
+      border-radius: 12px; background: var(--surface-soft);
+    }
+    table.rep {
+      width: 100%; border-collapse: collapse; font-size: .78rem;
+    }
+    table.rep th {
+      position: sticky; top: 0; z-index: 1;
+      background: var(--th-bg); color: var(--th-color); font-size: .68rem;
+      text-transform: uppercase; letter-spacing: .3px;
+      padding: .5rem .55rem; text-align: left; border-bottom: 2px solid var(--th-border);
+      white-space: nowrap;
+    }
+    table.rep td {
+      padding: .4rem .55rem; border-bottom: 1px solid var(--border); vertical-align: middle;
+      color: var(--text);
+    }
+    table.rep tr:nth-child(even) td { background: var(--row-even); }
+    table.rep tr:hover td { background: var(--row-hover); }
+    table.rep .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .meta { font-size: .78rem; color: var(--muted); margin-bottom: .55rem; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .75rem; }
+    .chip {
+      font-size: .72rem; font-weight: 600; padding: .28rem .65rem; border-radius: 16px;
+      border: 1.5px solid var(--border); background: var(--card); color: var(--text); cursor: pointer;
+    }
+    .chip.active { border-color: var(--accent); background: var(--chip-active-bg); color: var(--chip-active-color); }
+    .empty {
+      text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: .9rem;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .85rem; }
+    footer {
+      max-width: 1200px; margin: 1.5rem auto 0; text-align: center;
+      font-size: .78rem; color: var(--muted);
+    }
+  
+    /* —— Temas satinados + tablas corregidas —— */
+
+    /* GEOMACO: rosa perla satinado */
+    body.theme-geomaco {
+      --bg: #FDF2F7;
+      --card: #FFFBFC;
+      --border: #F3D0DE;
+      --accent: #E11D48;
+      --accent2: #BE123C;
+      --muted: #9F6B7C;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+        linear-gradient(160deg, #FFF7FB 0%, #FCE7F0 48%, #F9D5E5 100%);
+      color: var(--text);
+    }
+    body.theme-geomaco .panel,
+    body.theme-geomaco .kpi {
+      background: linear-gradient(180deg, #FFFFFF 0%, #FFF5F9 100%);
+      border-color: #F3D0DE;
+      box-shadow: 0 4px 18px rgba(190, 24, 93, 0.07), inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    body.theme-geomaco .tabs {
+      background: linear-gradient(180deg, #FFF5F9, #FCE7F0);
+      border-color: #F3D0DE;
+    }
+    body.theme-geomaco .tab.active,
+    body.theme-geomaco .btn-primary {
+      background: #E11D48; border-color: #E11D48; color: #fff;
+    }
+    body.theme-geomaco .btn-primary:hover { background: #BE123C; }
+    body.theme-geomaco .tab:hover { color: #E11D48; border-color: rgba(225, 29, 72, 0.4); }
+    body.theme-geomaco .btn-outline { border-color: #E11D48; color: #E11D48; }
+    body.theme-geomaco .btn-outline:hover { background: #E11D48; color: #fff; }
+    body.theme-geomaco .chart-box,
+    body.theme-geomaco .table-wrap {
+      background: linear-gradient(180deg, rgba(255,251,252,0.9), rgba(252,231,240,0.45));
+      border-color: #F3D0DE;
+    }
+    body.theme-geomaco table.rep th {
+      background: linear-gradient(180deg, #FFF5F9 0%, #FCE7F0 100%);
+      color: #9F1239;
+      border-bottom: 2px solid #E11D48;
+    }
+    body.theme-geomaco table.rep td {
+      border-bottom-color: #F3D0DE;
+    }
+    body.theme-geomaco table.rep tr:hover td {
+      background: rgba(252, 231, 240, 0.55);
+    }
+    body.theme-geomaco table.rep tr:nth-child(even) td {
+      background: rgba(255, 245, 249, 0.5);
+    }
+    body.theme-geomaco table.rep tr:nth-child(even):hover td {
+      background: rgba(252, 231, 240, 0.65);
+    }
+    body.theme-geomaco .chip.active:not([data-unidad="GEOMACO"]) {
+      border-color: #E11D48; background: rgba(225, 29, 72, 0.1); color: #BE123C;
+    }
+    #chipsUnidadComp .chip[data-unidad="GEOMACO"].active,
+    body.theme-geomaco #chipsUnidadComp .chip[data-unidad="GEOMACO"].active {
+      background: #E11D48 !important;
+      border-color: #BE123C !important;
+      color: #FFFFFF !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(225, 29, 72, 0.35);
+    }
+    body.theme-geomaco .brand .logo {
+      background: linear-gradient(135deg, #9F1239, #E11D48);
+    }
+    body.theme-geomaco a.back { color: #BE123C; }
+
+    /* Abastecimiento: verde esmeralda satinado */
+    body.theme-abastecimiento {
+      --bg: #ECFDF6;
+      --card: #F7FDFB;
+      --border: #B7EBD4;
+      --accent: #059669;
+      --accent2: #047857;
+      --muted: #4A7C68;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+        linear-gradient(160deg, #F0FDF7 0%, #D1FAE5 50%, #A7F3D0 100%);
+    }
+    body.theme-abastecimiento .panel,
+    body.theme-abastecimiento .kpi {
+      background: linear-gradient(180deg, #FFFFFF 0%, #ECFDF5 100%);
+      border-color: #B7EBD4;
+      box-shadow: 0 4px 18px rgba(5, 150, 105, 0.08), inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    body.theme-abastecimiento .tabs {
+      background: linear-gradient(180deg, #ECFDF5, #D1FAE5);
+      border-color: #B7EBD4;
+    }
+    body.theme-abastecimiento .tab.active,
+    body.theme-abastecimiento .btn-primary {
+      background: #059669; border-color: #059669; color: #fff;
+    }
+    body.theme-abastecimiento .btn-primary:hover { background: #047857; }
+    body.theme-abastecimiento .tab:hover { color: #059669; border-color: rgba(5, 150, 105, 0.45); }
+    body.theme-abastecimiento .chart-box,
+    body.theme-abastecimiento .table-wrap {
+      background: linear-gradient(180deg, rgba(247,253,251,0.95), rgba(209,250,229,0.4));
+      border-color: #B7EBD4;
+    }
+    body.theme-abastecimiento table.rep th {
+      background: linear-gradient(180deg, #ECFDF5 0%, #D1FAE5 100%);
+      color: #065F46;
+      border-bottom: 2px solid #059669;
+    }
+    body.theme-abastecimiento table.rep td {
+      border-bottom-color: #B7EBD4;
+    }
+    body.theme-abastecimiento table.rep tr:hover td {
+      background: rgba(167, 243, 208, 0.4);
+    }
+    body.theme-abastecimiento table.rep tr:nth-child(even) td {
+      background: rgba(236, 253, 245, 0.55);
+    }
+    body.theme-abastecimiento table.rep tr:nth-child(even):hover td {
+      background: rgba(167, 243, 208, 0.5);
+    }
+    body.theme-abastecimiento .chip.active:not([data-tipo="abastecimiento"]) {
+      border-color: #059669; background: rgba(5, 150, 105, 0.12); color: #047857;
+    }
+    #chipsTipoCortes .chip[data-tipo="abastecimiento"].active,
+    body.theme-abastecimiento #chipsTipoCortes .chip[data-tipo="abastecimiento"].active {
+      background: #059669 !important;
+      border-color: #047857 !important;
+      color: #FFFFFF !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(5, 150, 105, 0.35);
+    }
+    body.theme-abastecimiento .brand .logo {
+      background: linear-gradient(135deg, #065F46, #059669);
+    }
+    body.theme-abastecimiento a.back { color: #047857; }
+
+    /* Transferencias: mostaza satinado */
+    body.theme-transferencias {
+      --bg: #FFFBEB;
+      --card: #FFFEF8;
+      --border: #F5E0A8;
+      --accent: #D97706;
+      --accent2: #B45309;
+      --muted: #8B7355;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.55) 0%, transparent 42%),
+        linear-gradient(160deg, #FFFDF5 0%, #FEF3C7 50%, #FDE68A 100%);
+    }
+    body.theme-transferencias .panel,
+    body.theme-transferencias .kpi {
+      background: linear-gradient(180deg, #FFFFFF 0%, #FFFBEB 100%);
+      border-color: #F5E0A8;
+      box-shadow: 0 4px 18px rgba(217, 119, 6, 0.09), inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    body.theme-transferencias .tabs {
+      background: linear-gradient(180deg, #FFFBEB, #FEF3C7);
+      border-color: #F5E0A8;
+    }
+    body.theme-transferencias .tab.active,
+    body.theme-transferencias .btn-primary {
+      background: #D97706; border-color: #D97706; color: #fff;
+    }
+    body.theme-transferencias .btn-primary:hover { background: #B45309; }
+    body.theme-transferencias .tab:hover { color: #D97706; border-color: rgba(217, 119, 6, 0.45); }
+    body.theme-transferencias .chart-box,
+    body.theme-transferencias .table-wrap {
+      background: linear-gradient(180deg, rgba(255,254,248,0.95), rgba(254,243,199,0.45));
+      border-color: #F5E0A8;
+    }
+    body.theme-transferencias table.rep th {
+      background: linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%);
+      color: #92400E;
+      border-bottom: 2px solid #D97706;
+    }
+    body.theme-transferencias table.rep td {
+      border-bottom-color: #F5E0A8;
+    }
+    body.theme-transferencias table.rep tr:hover td {
+      background: rgba(253, 230, 138, 0.4);
+    }
+    body.theme-transferencias table.rep tr:nth-child(even) td {
+      background: rgba(255, 251, 235, 0.55);
+    }
+    body.theme-transferencias table.rep tr:nth-child(even):hover td {
+      background: rgba(253, 230, 138, 0.5);
+    }
+    body.theme-transferencias .chip.active:not([data-tipo="transferencias"]) {
+      border-color: #D97706; background: rgba(217, 119, 6, 0.12); color: #B45309;
+    }
+    #chipsTipoCortes .chip[data-tipo="transferencias"].active,
+    body.theme-transferencias #chipsTipoCortes .chip[data-tipo="transferencias"].active {
+      background: #D97706 !important;
+      border-color: #B45309 !important;
+      color: #FFFFFF !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(217, 119, 6, 0.35);
+    }
+    body.theme-transferencias .brand .logo {
+      background: linear-gradient(135deg, #92400E, #D97706);
+    }
+    body.theme-transferencias a.back { color: #B45309; }
+
+    /* Clientes: azul petróleo satinado */
+    body.theme-clientes {
+      --bg: #E6F2F4;
+      --card: #F5FAFB;
+      --border: #B5D4DA;
+      --accent: #0E4D5C;
+      --accent2: #0A3A45;
+      --muted: #4A6E76;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.5) 0%, transparent 42%),
+        linear-gradient(160deg, #F0F7F8 0%, #D4E8EC 50%, #B8D8DE 100%);
+    }
+    body.theme-clientes .panel,
+    body.theme-clientes .kpi {
+      background: linear-gradient(180deg, #FFFFFF 0%, #E8F4F5 100%);
+      border-color: #B5D4DA;
+      box-shadow: 0 4px 18px rgba(14, 77, 92, 0.09), inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    body.theme-clientes .tabs {
+      background: linear-gradient(180deg, #E8F4F5, #D4E8EC);
+      border-color: #B5D4DA;
+    }
+    body.theme-clientes .tab.active,
+    body.theme-clientes .btn-primary {
+      background: #0E4D5C; border-color: #0E4D5C; color: #fff;
+    }
+    body.theme-clientes .btn-primary:hover { background: #0A3A45; }
+    body.theme-clientes .tab:hover { color: #0E4D5C; border-color: rgba(14, 77, 92, 0.4); }
+    body.theme-clientes .chart-box,
+    body.theme-clientes .table-wrap {
+      background: linear-gradient(180deg, rgba(245,250,251,0.95), rgba(212,232,236,0.45));
+      border-color: #B5D4DA;
+    }
+    body.theme-clientes table.rep th {
+      background: linear-gradient(180deg, #E8F4F5 0%, #CCE5E8 100%);
+      color: #0A3A45;
+      border-bottom: 2px solid #0E4D5C;
+    }
+    body.theme-clientes table.rep td {
+      border-bottom-color: #B5D4DA;
+    }
+    body.theme-clientes table.rep tr:hover td {
+      background: rgba(181, 212, 218, 0.35);
+    }
+    body.theme-clientes table.rep tr:nth-child(even) td {
+      background: rgba(232, 244, 245, 0.55);
+    }
+    body.theme-clientes table.rep tr:nth-child(even):hover td {
+      background: rgba(181, 212, 218, 0.45);
+    }
+    body.theme-clientes .chip.active:not([data-tipo="clientes"]) {
+      border-color: #0E4D5C; background: rgba(14, 77, 92, 0.1); color: #0A3A45;
+    }
+    #chipsTipoCortes .chip[data-tipo="clientes"].active,
+    body.theme-clientes #chipsTipoCortes .chip[data-tipo="clientes"].active {
+      background: #0E4D5C !important;
+      border-color: #0A3A45 !important;
+      color: #FFFFFF !important;
+      font-weight: 700 !important;
+      box-shadow: 0 2px 10px rgba(14, 77, 92, 0.4);
+    }
+    body.theme-clientes .brand .logo {
+      background: linear-gradient(135deg, #0A3A45, #0E4D5C);
+    }
+    body.theme-clientes a.back { color: #0E4D5C; }
+
+    @media (prefers-color-scheme: dark) {
+      body.theme-geomaco {
+        --bg: #2A1520; --card: #3B1F2C; --text: #FCE7F0; --muted: #F9A8D4;
+        --border: #6B3048; --accent: #FB7185; --accent2: #F43F5E;
+        background: linear-gradient(160deg, #1F1218 0%, #2A1520 50%, #3B1F2C 100%);
+      }
+      body.theme-geomaco .panel,
+      body.theme-geomaco .kpi {
+        background: rgba(59, 31, 44, 0.95); border-color: #6B3048;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+      }
+      body.theme-geomaco table.rep th {
+        background: linear-gradient(180deg, #3B1F2C, #4A2535);
+        color: #FCE7F0; border-bottom-color: #FB7185;
+      }
+      body.theme-geomaco table.rep tr:nth-child(even) td {
+        background: rgba(75, 40, 55, 0.4);
+      }
+      body.theme-abastecimiento {
+        --bg: #0F2A1F; --card: #143D2C; --text: #D1FAE5; --muted: #6EE7B7;
+        --border: #1F5C40; --accent: #34D399; --accent2: #10B981;
+        background: linear-gradient(160deg, #0A1F16 0%, #0F2A1F 50%, #143D2C 100%);
+      }
+      body.theme-abastecimiento .panel,
+      body.theme-abastecimiento .kpi {
+        background: rgba(20, 61, 44, 0.95); border-color: #1F5C40;
+      }
+      body.theme-abastecimiento table.rep th {
+        background: linear-gradient(180deg, #143D2C, #1A4A35);
+        color: #D1FAE5; border-bottom-color: #34D399;
+      }
+      body.theme-abastecimiento table.rep tr:nth-child(even) td {
+        background: rgba(26, 74, 53, 0.35);
+      }
+      body.theme-transferencias {
+        --bg: #2A2110; --card: #3D3018; --text: #FEF3C7; --muted: #FCD34D;
+        --border: #5C4A1F; --accent: #FBBF24; --accent2: #F59E0B;
+        background: linear-gradient(160deg, #1A150A 0%, #2A2110 50%, #3D3018 100%);
+      }
+      body.theme-transferencias .panel,
+      body.theme-transferencias .kpi {
+        background: rgba(61, 48, 24, 0.95); border-color: #5C4A1F;
+      }
+      body.theme-transferencias table.rep th {
+        background: linear-gradient(180deg, #3D3018, #4A3A1C);
+        color: #FEF3C7; border-bottom-color: #FBBF24;
+      }
+      body.theme-transferencias table.rep tr:nth-child(even) td {
+        background: rgba(74, 58, 28, 0.35);
+      }
+      body.theme-clientes {
+        --bg: #0A1F24; --card: #12333A; --text: #E0F2F4; --muted: #7DD3D8;
+        --border: #1A4A54; --accent: #5EEAD4; --accent2: #2DD4BF;
+        background: linear-gradient(160deg, #061418 0%, #0A1F24 50%, #12333A 100%);
+      }
+      body.theme-clientes .panel,
+      body.theme-clientes .kpi {
+        background: rgba(18, 51, 58, 0.95); border-color: #1A4A54;
+      }
+      body.theme-clientes table.rep th {
+        background: linear-gradient(180deg, #12333A, #184850);
+        color: #E0F2F4; border-bottom-color: #5EEAD4;
+      }
+      body.theme-clientes table.rep tr:nth-child(even) td {
+        background: rgba(24, 72, 80, 0.35);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">UB</div>
+      <div>
+        <h1>Reportes</h1>
+        <p>Comprobantes (paquetería) · Cortes semanales · Pareto 80/20</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <a class="back" href="index.html">← Portal</a>
+      <button type="button" class="btn btn-contrast" id="btnContrast" title="Alto contraste (accesibilidad)" aria-pressed="false">Alto contraste</button>
+      <button type="button" class="btn btn-primary" id="btnActualizar">Actualizar</button>
+      <button type="button" class="btn btn-excel" id="btnExcel">Excel</button>
+      <button type="button" class="btn btn-pdf" id="btnPdf">PDF</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="filters" id="filtros">
+        <label>Año
+          <select id="filtroAnio"></select>
+        </label>
+        <label>Mes desde
+          <select id="filtroMesDesde">
+            <option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option>
+          </select>
+        </label>
+        <label>Mes hasta
+          <select id="filtroMesHasta">
+            <option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option>
+            <option value="12" selected>Dic</option>
+          </select>
+        </label>
+        <label>Buscar
+          <input type="search" id="filtroQ" placeholder="Proveedor / transporte…" autocomplete="off">
+        </label>
+        <button type="button" class="btn btn-primary" id="btnAplicar" style="margin-top:1.1rem">Aplicar</button>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Secciones de reportes">
+      <button type="button" class="tab active" role="tab" id="tab-comp" data-tab="comp"
+              aria-selected="true" aria-controls="panel-comp" tabindex="0">Comprobantes · Paquetería</button>
+      <button type="button" class="tab" role="tab" id="tab-cortes" data-tab="cortes"
+              aria-selected="false" aria-controls="panel-cortes" tabindex="-1">Cortes semanales</button>
+    </div>
+
+    <!-- PANEL COMPROBANTES -->
+    <div class="tab-panel active" id="panel-comp" data-panel="comp" role="tabpanel" aria-labelledby="tab-comp">
+      <div class="meta" id="metaComp">Seleccioná filtros y actualizá.</div>
+      <div class="chip-row" id="chipsUnidadComp">
+        <button type="button" class="chip active" data-unidad="todas">Todas las unidades</button>
+        <button type="button" class="chip" data-unidad="SUPERMAT">SUPERMAT</button>
+        <button type="button" class="chip" data-unidad="GEOMACO">GEOMACO</button>
+      </div>
+      <div class="chip-row" id="chipsAgrupacionComp">
+        <button type="button" class="chip active" data-agrup="nombre">Unificar por nombre</button>
+        <button type="button" class="chip" data-agrup="nombre_unidad">Nombre + unidad</button>
+      </div>
+      <div class="kpis" id="kpisComp"></div>
+      <div class="charts" id="chartsComp">
+        <div class="chart-box" data-chart="chartCompEvo">
+          <div class="chart-box-head">
+            <p class="chart-title">Evolución mensual $</p>
+            <div class="chart-tools" data-for="chartCompEvo">
+              <button type="button" data-type="line" class="active">Línea</button>
+              <button type="button" data-type="bar">Barras</button>
+              <button type="button" data-type="area">Área</button>
+            </div>
+          </div>
+          <canvas id="chartCompEvo"></canvas>
+        </div>
+        <div class="chart-box" data-chart="chartCompVar">
+          <div class="chart-box-head">
+            <p class="chart-title">Variación % mes a mes</p>
+            <div class="chart-tools" data-for="chartCompVar">
+              <button type="button" data-type="line" class="active">Línea</button>
+              <button type="button" data-type="bar">Barras</button>
+            </div>
+          </div>
+          <canvas id="chartCompVar"></canvas>
+        </div>
+        <div class="chart-box wide" data-chart="chartCompPareto">
+          <div class="chart-box-head">
+            <p class="chart-title">Pareto 80/20 · transporte del servicio <span id="paretoCompHint" style="font-weight:500;text-transform:none;letter-spacing:0"></span></p>
+            <div class="chart-tools" data-for="chartCompPareto">
+              <button type="button" data-action="top10" class="active">Top 10</button>
+              <button type="button" data-action="top15">Top 15</button>
+              <button type="button" data-action="all">Más</button>
+            </div>
+          </div>
+          <canvas id="chartCompPareto" title="Clic en una barra para filtrar por proveedor"></canvas>
+        </div>
+        <div class="chart-box" data-chart="chartCompTrend">
+          <div class="chart-box-head">
+            <p class="chart-title">Tendencia (media móvil 3 meses)</p>
+            <div class="chart-tools" data-for="chartCompTrend">
+              <button type="button" data-type="line" class="active">Línea</button>
+              <button type="button" data-type="bar">Barras</button>
+            </div>
+          </div>
+          <canvas id="chartCompTrend"></canvas>
+        </div>
+        <div class="chart-box" data-chart="chartCompTop">
+          <div class="chart-box-head">
+            <p class="chart-title">Top 10 transportes del servicio</p>
+            <div class="chart-tools" data-for="chartCompTop">
+              <button type="button" data-action="top5">Top 5</button>
+              <button type="button" data-action="top10" class="active">Top 10</button>
+              <button type="button" data-action="top15">Top 15</button>
+            </div>
+          </div>
+          <canvas id="chartCompTop" title="Clic para filtrar por proveedor"></canvas>
+        </div>
+        <div class="chart-box" data-chart="chartCompUnidades">
+          <div class="chart-box-head">
+            <p class="chart-title">Rendimiento por unidad (SUPERMAT vs GEOMACO)</p>
+            <div class="chart-tools" data-for="chartCompUnidades">
+              <button type="button" data-type="line" class="active">Línea</button>
+              <button type="button" data-type="bar">Barras</button>
+              <button type="button" data-type="area">Área</button>
+            </div>
+          </div>
+          <canvas id="chartCompUnidades"></canvas>
+        </div>
+        <div class="chart-box" data-chart="chartCompTicket">
+          <div class="chart-box-head">
+            <p class="chart-title">Ticket medio $ / documento</p>
+            <div class="chart-tools" data-for="chartCompTicket">
+              <button type="button" data-action="top5">Top 5</button>
+              <button type="button" data-action="top10" class="active">Top 10</button>
+            </div>
+          </div>
+          <canvas id="chartCompTicket" title="Clic para filtrar por proveedor"></canvas>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rep">
+          <thead>
+            <tr>
+              <th>#</th><th>Proveedor / Transporte</th><th>Unidad</th>
+              <th class="num">Importe</th>
+              <th class="num">% total</th><th class="num">% acum.</th>
+              <th class="num">Docs</th><th>Núcleo 80%</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyComp">
+            <tr><td colspan="8" class="empty">Sin datos de comprobantes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL CORTES -->
+    <div class="tab-panel" id="panel-cortes" data-panel="cortes" role="tabpanel" aria-labelledby="tab-cortes" hidden>
+      <div class="meta" id="metaCortes">Seleccioná filtros y actualizá.</div>
+      <div class="chip-row" id="chipsTipoCortes">
+        <button type="button" class="chip active" data-tipo="todos">Todos</button>
+        <button type="button" class="chip" data-tipo="abastecimiento">Abastecimiento</button>
+        <button type="button" class="chip" data-tipo="transferencias">Transferencias</button>
+        <button type="button" class="chip" data-tipo="clientes">Clientes</button>
+      </div>
+      <div class="kpis" id="kpisCortes"></div>
+      <div class="charts">
+        <div class="chart-box">
+          <p class="chart-title">Evolución por corte / mes $</p>
+          <canvas id="chartCortesEvo"></canvas>
+        </div>
+        <div class="chart-box">
+          <p class="chart-title">Composición por tipo</p>
+          <canvas id="chartCortesMix"></canvas>
+        </div>
+        <div class="chart-box wide">
+          <p class="chart-title">Pareto 80/20 · transportistas / proveedores <span id="paretoCortesHint" style="font-weight:500;text-transform:none;letter-spacing:0"></span></p>
+          <canvas id="chartCortesPareto"></canvas>
+        </div>
+        <div class="chart-box">
+          <p class="chart-title">Variación % período a período</p>
+          <canvas id="chartCortesVar"></canvas>
+        </div>
+        <div class="chart-box">
+          <p class="chart-title">Tendencia (media móvil)</p>
+          <canvas id="chartCortesTrend"></canvas>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rep">
+          <thead>
+            <tr>
+              <th>#</th><th>Transportista / Proveedor</th><th>Tipo</th>
+              <th class="num">Importe</th><th class="num">% total</th>
+              <th class="num">% acum.</th><th class="num">Docs</th><th>Núcleo 80%</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCortes">
+            <tr><td colspan="8" class="empty">Sin datos de cortes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="chartTooltip" class="chart-tooltip" role="tooltip" aria-hidden="true"></div>
+
+  <footer>UNIBER · Reportes · Solo Comprobantes y Cortes semanales · Confidencial</footer>
+
+  <script>
+(function () {
+  'use strict';
+
+  const MESES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  let tabActiva = 'comp';
+  let tipoCortes = 'todos';
+  let unidadComp = 'todas'; // todas | SUPERMAT | GEOMACO
+  let agrupComp = 'nombre'; // nombre | nombre_unidad
+  const charts = {};
+  /** Preferencias dinámicas de gráficos (tipo, top N, etc.) */
+  const chartPrefs = {
+    chartCompEvo: { type: 'line' },
+    chartCompVar: { type: 'line' },
+    chartCompTrend: { type: 'line' },
+    chartCompUnidades: { type: 'line' },
+    chartCompPareto: { topN: 10 },
+    chartCompTop: { topN: 10 },
+    chartCompTicket: { topN: 10 },
+    chartCortesEvo: { type: 'line' },
+    chartCortesVar: { type: 'line' },
+    chartCortesTrend: { type: 'line' },
+    chartCortesPareto: { topN: 10 }
+  };
+  /** Meta de últimos datos para re-render dinámico sin recargar storage */
+  const chartMeta = {};
+
+
+  function money(v) {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(v || 0);
+  }
+  function moneyTick(v) {
+    if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    if (Math.abs(v) >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'k';
+    return '$' + v;
+  }
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function normalizar(n) {
+    return String(n ?? '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim().replace(/\s+/g, ' ').replace(/[.,;]+/g, '');
+  }
+  function toISODate(f) {
+    if (!f) return '';
+    const s = String(f).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return s.slice(0, 10);
+  }
+  function mesKey(iso) {
+    const d = toISODate(iso);
+    return d ? d.slice(0, 7) : '';
+  }
+  const ENC_PREFIX = 'UNIBER_ENC_V1:';
+  const ENC_APP_KEY = 'UNIBER-Comprobantes-AES-2026-v1';
+  function descifrarValor(raw, fallback) {
+    if (raw == null || raw === '') return fallback;
+    try {
+      if (typeof raw === 'string' && raw.startsWith(ENC_PREFIX) && typeof CryptoJS !== 'undefined') {
+        const bytes = CryptoJS.AES.decrypt(raw.slice(ENC_PREFIX.length), ENC_APP_KEY);
+        const txt = bytes.toString(CryptoJS.enc.Utf8);
+        if (!txt) throw new Error('clave inválida');
+        return JSON.parse(txt);
+      }
+      return JSON.parse(raw);
+    } catch (e) {
+      try { return JSON.parse(raw); } catch { return fallback; }
+    }
+  }
+  function safeParse(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw == null || raw === '') return null;
+      return descifrarValor(raw, null);
+    } catch { return null; }
+  }
+  function asArray(raw, ...keys) {
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === 'object') {
+      for (const k of keys) if (Array.isArray(raw[k])) return raw[k];
+      for (const v of Object.values(raw)) if (Array.isArray(v)) return v;
+    }
+    return [];
+  }
+  function looksLikeComprobante(item) {
+    if (!item || typeof item !== 'object') return false;
+    const hasFecha = !!(item.fecha || item.fechaComprobante || item.date || item.fecha_emision || item.fechaCarga);
+    const hasNum = !!(item.numero || item.nro || item.nroComprobante || item.id || item.codigo);
+    const hasFacturas = Array.isArray(item.facturas);
+    const hasImporte = item.importe != null || item.total != null || item.monto != null || item.importeTotal != null;
+    // Excluir PHR / RTOS / cortes
+    if (Array.isArray(item.items) && item.items[0] && item.items[0].importePHR != null) return false;
+    if (item.autorizacion && (item.origen || item.destino || item.fecha_flete)) return false;
+    if (item.fechaCorte != null && item.aPago != null) return false;
+    return hasFecha && (hasNum || hasFacturas || hasImporte);
+  }
+  function extractComprobantesArray(raw) {
+    const candidates = [];
+    if (Array.isArray(raw)) candidates.push(raw);
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      for (const k of ['comprobantes', 'data', 'items', 'registros', 'list', 'facturas', 'docs', 'documentos']) {
+        if (Array.isArray(raw[k])) candidates.push(raw[k]);
+      }
+      for (const v of Object.values(raw)) {
+        if (Array.isArray(v) && !candidates.includes(v)) candidates.push(v);
+      }
+    }
+    let best = [], bestScore = 0;
+    for (const arr of candidates) {
+      if (!arr.length) continue;
+      const score = arr.slice(0, 8).filter(looksLikeComprobante).length;
+      if (score > bestScore || (score === bestScore && arr.length > best.length)) {
+        bestScore = score;
+        best = arr;
+      }
+    }
+    return bestScore > 0 ? best : (candidates.find(a => a.length) || []);
+  }
+  /** Caché en memoria: evita re-parsear localStorage en cada filtro/tab/export. */
+  const DataCache = {
+    found: null,       // { key, data }
+    compRows: null,    // filas normalizadas comprobantes
+    cortesRows: null,  // filas normalizadas cortes
+    ts: 0,
+    TTL: 60000, // 60s; "Actualizar" fuerza invalidación
+    valid() {
+      return this.ts > 0 && (Date.now() - this.ts) < this.TTL;
+    },
+    invalidate() {
+      this.found = null;
+      this.compRows = null;
+      this.cortesRows = null;
+      this.ts = 0;
+    },
+    touch() { this.ts = Date.now(); }
+  };
+
+  function findComprobantesData(force) {
+    if (!force && DataCache.found) return DataCache.found;
+    const knownKeys = [
+      'comprobantes_multifactura', 'comprobantes', 'multifactura',
+      'comprobantes_data', 'comprobantes_v1', 'uniber_comprobantes',
+      'uniber_comprobantes_v1', 'comprobantes_facturas',
+      'uniber_comprobantes_multifactura', 'comprobantesMultifactura',
+      'COMPROBANTES', 'Comprobantes'
+    ];
+    let result = { key: null, data: [] };
+    for (const key of knownKeys) {
+      const raw = safeParse(key);
+      if (raw == null) continue;
+      const arr = extractComprobantesArray(raw);
+      if (arr.length && arr.some(looksLikeComprobante)) {
+        result = { key, data: arr };
+        break;
+      }
+      if (arr.length) {
+        result = { key, data: arr };
+        break;
+      }
+    }
+    // Solo escanear otras claves si no encontramos nada (costoso)
+    if (!result.data.length) {
+      const exclude = new Set([
+        ...knownKeys,
+        'comprobantes_pro', 'fletes_pro', 'fletes-phr',
+        'unimax_fletes_v52', 'unimax_fletes', 'logitrack', 'fletes_rtos',
+        'uniber_cortes_pagos_fletes_v1', 'uniber_cortes_ui_v1',
+        'cortes_theme', 'cortes_facturas', 'totalizador_aliases_v1'
+      ]);
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key || exclude.has(key)) continue;
+          if (/theme|ui_|_ui$|dark|light|alias|tarif|email|push|whatsapp|densidad/i.test(key)) continue;
+          const raw = safeParse(key);
+          if (raw == null) continue;
+          const arr = extractComprobantesArray(raw);
+          if (arr.length && arr.some(looksLikeComprobante)) {
+            result = { key, data: arr };
+            break;
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    DataCache.found = result;
+    DataCache.touch();
+    return result;
+  }
+  function totalComprobante(c) {
+    if (!c) return 0;
+    // Preferir total de cabecera (columna "Total $" del listado)
+    const header = parseFloat(
+      c.total ?? c.importeTotal ?? c.totalPesos ?? c.total_pesos ??
+      c.montoTotal ?? c.importe ?? c.monto ?? c.totalFacturas ?? c.totalComprobante
+    ) || 0;
+    if (header > 0) return header;
+    if (Array.isArray(c.facturas) && c.facturas.length) {
+      const sum = c.facturas.reduce((s, f) => s + (parseFloat(f.importe ?? f.monto ?? f.total ?? f.importeTotal) || 0), 0);
+      if (sum > 0) return sum;
+    }
+    if (Array.isArray(c.items) && c.items.length) {
+      const sum = c.items.reduce((s, i) => s + (parseFloat(i.importe ?? i.monto ?? i.total) || 0), 0);
+      if (sum) return sum;
+    }
+    return 0;
+  }
+  function varPct(cur, prev) {
+    if (prev == null || prev === 0) return cur ? 100 : null;
+    return ((cur - prev) / Math.abs(prev)) * 100;
+  }
+  function movingAvg(arr, window) {
+    return arr.map((_, i) => {
+      const from = Math.max(0, i - window + 1);
+      const slice = arr.slice(from, i + 1);
+      return slice.reduce((a, b) => a + b, 0) / slice.length;
+    });
+  }
+  function calcPareto(ranked, key) {
+    const grand = ranked.reduce((s, t) => s + (t[key] || 0), 0) || 1;
+    let acum = 0, n80 = 0;
+    ranked.forEach((t, i) => {
+      acum += t[key] || 0;
+      if (!n80 && acum / grand >= 0.8) n80 = i + 1;
+    });
+    if (!n80) n80 = ranked.length;
+    return { grand, n80 };
+  }
+  function destroyChart(id) {
+    if (charts[id]) {
+      try { charts[id].destroy(); } catch (e) {}
+      charts[id] = null;
+    }
+  }
+
+  function filtroActual() {
+    return {
+      anio: parseInt(document.getElementById('filtroAnio').value || new Date().getFullYear(), 10),
+      mesDesde: parseInt(document.getElementById('filtroMesDesde').value || '1', 10),
+      mesHasta: parseInt(document.getElementById('filtroMesHasta').value || '12', 10),
+      q: (document.getElementById('filtroQ').value || '').trim().toUpperCase()
+    };
+  }
+  function enRango(ym, f) {
+    if (!ym || ym.length < 7) return false;
+    const y = parseInt(ym.slice(0, 4), 10);
+    const m = parseInt(ym.slice(5, 7), 10);
+    const m0 = Math.min(f.mesDesde, f.mesHasta);
+    const m1 = Math.max(f.mesDesde, f.mesHasta);
+    return y === f.anio && m >= m0 && m <= m1;
+  }
+
+  /**
+   * En Comprobantes (listado), el transporte del servicio es
+   * "Proveedor (Código - Nombre)" p.ej. "13146 - FERNANDEZ AGUSTIN NICOLAS".
+   * Unidad de negocio: SUPERMAT | GEOMACO.
+   */
+  /** Solo el nombre del proveedor/transporte (sin código numérico). */
+  function soloNombreProveedor(texto) {
+    let s = String(texto ?? '').trim();
+    if (!s) return '';
+    // "13146 - FERNANDEZ AGUSTIN NICOLAS" → "FERNANDEZ AGUSTIN NICOLAS"
+    s = s.replace(/^\d+\s*[-–:]\s*/, '');
+    // "13146 FERNANDEZ..." → nombre
+    s = s.replace(/^\d+\s+/, '');
+    return s.trim();
+  }
+
+  /**
+   * Busca en un objeto (y 1 nivel anidado) strings tipo "13146 - FERNANDEZ..."
+   * o campos típicos de proveedor del módulo Comprobantes.
+   */
+  function escanearNombreProveedor(obj, depth) {
+    if (!obj || typeof obj !== 'object' || depth < 0) return '';
+    const preferKeys = /proveedor|razon|nombre|transporte|transportista|fletero|carrier|cliente|beneficiario|titular/i;
+    const keys = Object.keys(obj);
+
+    // 1) Claves con nombre sugerente
+    for (const k of keys) {
+      if (!preferKeys.test(k)) continue;
+      const v = obj[k];
+      if (v == null) continue;
+      if (typeof v === 'string' || typeof v === 'number') {
+        const limpio = soloNombreProveedor(v);
+        if (limpio && !/^\d+$/.test(limpio) && limpio.length > 1) return limpio;
+      }
+      if (typeof v === 'object' && !Array.isArray(v)) {
+        const sub = v.nombre || v.razonSocial || v.name || v.denominacion || v.label || v.texto || '';
+        const limpio = soloNombreProveedor(sub);
+        if (limpio && !/^\d+$/.test(limpio)) return limpio;
+      }
+    }
+
+    // 2) Cualquier string con patrón "código - nombre"
+    for (const k of keys) {
+      const v = obj[k];
+      if (typeof v === 'string' && /^\d{2,}\s*[-–:]\s*\S/.test(v.trim())) {
+        const limpio = soloNombreProveedor(v);
+        if (limpio) return limpio;
+      }
+    }
+
+    // 3) Un nivel más (factura, proveedor, emisor, etc.)
+    if (depth > 0) {
+      for (const k of keys) {
+        const v = obj[k];
+        if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+        if (/factura|item|detalle|meta|extra|datos/i.test(k)) continue; // arrays aparte
+        const found = escanearNombreProveedor(v, depth - 1);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+
+  function nombreDesdeFacturas(c) {
+    const facts = Array.isArray(c.facturas) ? c.facturas
+      : (Array.isArray(c.Facturas) ? c.Facturas
+        : (Array.isArray(c.facturasList) ? c.facturasList : []));
+    for (const f of facts) {
+      const n = escanearNombreProveedor(f, 1);
+      if (n) return n;
+    }
+    const items = Array.isArray(c.items) ? c.items : [];
+    for (const it of items) {
+      const n = escanearNombreProveedor(it, 1);
+      if (n) return n;
+    }
+    // RTOS vinculados a veces traen el proveedor
+    const rtos = Array.isArray(c.rtos) ? c.rtos
+      : (Array.isArray(c.remitos) ? c.remitos
+        : (Array.isArray(c.RTOS) ? c.RTOS : []));
+    for (const r of rtos) {
+      const n = escanearNombreProveedor(r, 1);
+      if (n) return n;
+    }
+    return '';
+  }
+
+  function nombreProveedorServicio(obj, parent) {
+    const o = obj || {};
+    const p = parent || {};
+
+    // Escaneo agresivo del propio registro y del padre
+    let n = escanearNombreProveedor(o, 1);
+    if (n) return n;
+    n = escanearNombreProveedor(p, 1);
+    if (n) return n;
+
+    // Facturas / ítems / RTOS del comprobante
+    n = nombreDesdeFacturas(o);
+    if (n) return n;
+    if (p && p !== o) {
+      n = nombreDesdeFacturas(p);
+      if (n) return n;
+    }
+    return '';
+  }
+
+  function unidadNegocio(obj, parent) {
+    const o = obj || {};
+    const p = parent || {};
+    const raw = o.unidad || o.unidadNegocio || o.businessUnit || o.bu || o.empresa ||
+      o.sucursal || o.marca || o.unidad_negocio || o.negocio ||
+      p.unidad || p.unidadNegocio || p.businessUnit || p.bu || p.empresa ||
+      p.sucursal || p.marca || p.unidad_negocio || '';
+    const s = String(raw || '').trim().toUpperCase();
+    if (/GEOMACO|\bGEO\b/.test(s)) return 'GEOMACO';
+    if (/SUPERMAT|\bSUP\b/.test(s)) return 'SUPERMAT';
+    const nro = String(o.numero || o.nro || o.nroComprobante || p.numero || p.nro || p.nroComprobante || '').toUpperCase();
+    if (nro.startsWith('GEO')) return 'GEOMACO';
+    if (nro.startsWith('SUP')) return 'SUPERMAT';
+    return s || 'SIN UNIDAD';
+  }
+
+  /**
+   * Carga alineada al listado de comprobantes.html:
+   * 1 fila por comprobante con Proveedor (Código-Nombre), Unidad, Total $, Fecha.
+   * Así coinciden Hacha de Piedra, LA SEVILLANITA, FERNANDEZ, etc.
+   */
+  function loadComprobantesRows(force) {
+    if (!force && DataCache.compRows) return DataCache.compRows;
+    const found = findComprobantesData(force);
+    const list = found.data || [];
+    const rows = [];
+
+    function pushRow(nombre, unidad, imp, ym, nroComp) {
+      if (!(imp > 0)) return;
+      if (!ym) {
+        const d = new Date();
+        ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      }
+      rows.push({
+        nombre: nombre || 'Sin proveedor',
+        unidad: unidad || 'SIN UNIDAD',
+        mes: ym,
+        total: imp,
+        docs: 1,
+        origen: 'comprobante',
+        nroComp: nroComp || '',
+        tieneTransporte: !!(nombre && nombre !== 'Sin proveedor')
+      });
+    }
+
+    list.forEach(c => {
+      if (!c || typeof c !== 'object') return;
+      const fechaComp = c.fecha || c.fechaComprobante || c.date || c.fecha_emision ||
+        c.fechaCarga || c.fecha_comprobante || c.createdAt || '';
+      const unidadC = unidadNegocio(c, null);
+      const nroComp = c.numero || c.nro || c.nroComprobante || c.id || c.codigo || '';
+      let nombreHeader = nombreProveedorServicio(c, null);
+      const totHeader = totalComprobante(c);
+
+      // —— Estrategia principal: igual que la grilla (1 fila = 1 comprobante) ——
+      if (totHeader > 0) {
+        // Si el header no trae nombre, intentar de nuevo en facturas/rtos
+        if (!nombreHeader) nombreHeader = nombreDesdeFacturas(c);
+        let ym = mesKey(fechaComp);
+        pushRow(nombreHeader, unidadC, totHeader, ym, nroComp);
+        return; // no duplicar con facturas
+      }
+
+      // —— Fallback: sumar / desglosar facturas o ítems si el header no tiene total ——
+      const facts = Array.isArray(c.facturas) ? c.facturas : (Array.isArray(c.Facturas) ? c.Facturas : []);
+      const items = Array.isArray(c.items) ? c.items : [];
+
+      if (facts.length) {
+        let sum = 0;
+        facts.forEach(f => {
+          const imp = parseFloat(f.importe ?? f.monto ?? f.total ?? f.importeTotal ?? 0) || 0;
+          sum += imp;
+        });
+        if (sum > 0) {
+          // Una sola fila con proveedor del header (o de la 1ª factura)
+          const nom = nombreHeader || nombreProveedorServicio(facts[0], c);
+          let ym = mesKey(fechaComp) || mesKey(facts[0].fechaFactura || facts[0].fecha || '');
+          pushRow(nom, unidadC, sum, ym, nroComp);
+          return;
+        }
+      }
+
+      if (items.length) {
+        let sum = 0;
+        items.forEach(it => {
+          sum += parseFloat(it.importe ?? it.monto ?? it.total ?? 0) || 0;
+        });
+        if (sum > 0) {
+          const nom = nombreHeader || nombreProveedorServicio(items[0], c);
+          let ym = mesKey(fechaComp);
+          pushRow(nom, unidadC, sum, ym, nroComp);
+        }
+      }
+    });
+
+    try {
+      const conT = rows.filter(r => r.tieneTransporte).length;
+      const byU = {};
+      rows.forEach(r => { byU[r.unidad] = (byU[r.unidad] || 0) + 1; });
+      const sample = rows.slice(0, 5).map(r => r.nombre + '|' + r.unidad + '|' + r.total);
+      console.info('[Reportes] Comprobantes:', found.key || '(no key)',
+        'regs:', list.length, 'filas:', rows.length, 'con proveedor:', conT,
+        'unidades:', byU, 'muestra:', sample);
+      if (conT === 0 && list.length) {
+        const sample0 = list[0];
+        console.warn('[Reportes] Sin nombres de proveedor. Claves del 1er comprobante:',
+          sample0 && typeof sample0 === 'object' ? Object.keys(sample0) : sample0);
+        // Dump valores string cortos para diagnóstico
+        if (sample0 && typeof sample0 === 'object') {
+          const dump = {};
+          Object.keys(sample0).forEach(k => {
+            const v = sample0[k];
+            if (typeof v === 'string' && v.length < 120) dump[k] = v;
+            else if (typeof v === 'number') dump[k] = v;
+            else if (Array.isArray(v)) dump[k] = 'array[' + v.length + ']';
+            else if (v && typeof v === 'object') dump[k] = 'object{' + Object.keys(v).slice(0, 8).join(',') + '}';
+          });
+          console.warn('[Reportes] Dump 1er registro:', dump);
+        }
+      }
+    } catch (e) {}
+    DataCache.compRows = rows;
+    DataCache.touch();
+    return rows;
+  }
+
+  // ——— Carga Cortes ———
+  function clasificarTipoCorte(f) {
+    const blob = [
+      f.tipo, f.tipoFlete, f.concepto, f.cuenta, f.rubro, f.categoria,
+      f.descripcion, f.obs, f.origen_dato, f.clase
+    ].filter(Boolean).join(' ').toUpperCase();
+    if (/ABAST|ABASTEC/.test(blob)) return 'abastecimiento';
+    if (/TRANSF|TRANSFEREN/.test(blob)) return 'transferencias';
+    if (/CLIENT|PAQUET|ENTREGA/.test(blob)) return 'clientes';
+    // fallback: si hay transportista de flete → clientes genérico
+    return 'clientes';
+  }
+
+  function loadCortesRows(force) {
+    if (!force && DataCache.cortesRows) return DataCache.cortesRows;
+    const raw = safeParse('uniber_cortes_pagos_fletes_v1');
+    const facts = asArray(raw, 'facturas', 'data', 'items', 'list');
+    const rows = [];
+    facts.forEach(f => {
+      const nombre = (f.transportista || f.proveedor || f.razonSocial || f.nombre || '').trim();
+      const imp = parseFloat(f.monto ?? f.importe ?? f.total ?? 0) || 0;
+      const fecha = f.fechaCorte || f.fechaFactura || f.fecha || '';
+      const ym = mesKey(fecha);
+      if (!nombre || imp <= 0 || !ym) return;
+      rows.push({
+        nombre,
+        mes: ym,
+        total: imp,
+        docs: 1,
+        tipo: clasificarTipoCorte(f),
+        origen: 'corte'
+      });
+    });
+    DataCache.cortesRows = rows;
+    DataCache.touch();
+    return rows;
+  }
+
+  function filtrarRows(rows, f, tipoFilter, unidadFilter) {
+    return rows.filter(r => {
+      if (!enRango(r.mes, f)) return false;
+      if (f.q && !normalizar(r.nombre).includes(normalizar(f.q)) && !String(r.nombre).toUpperCase().includes(f.q)) return false;
+      if (tipoFilter && tipoFilter !== 'todos' && r.tipo && r.tipo !== tipoFilter) return false;
+      if (unidadFilter && unidadFilter !== 'todas' && r.unidad && r.unidad !== unidadFilter) return false;
+      return true;
+    });
+  }
+
+  /**
+   * Unifica nombres de proveedor:
+   * "Hacha de Piedra S.A." ≡ "Hacha de Piedra" ≡ "HACHA DE PIEDRA"
+   */
+  function claveProveedor(nombre) {
+    let s = String(nombre || '').toUpperCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    s = s.replace(/\b(S\.?A\.?S?\.?|S\.?R\.?L\.?|S\.?C\.?S\.?|INC\.?|LTDA\.?|SPA|SRL|SA|SAS)\b/g, ' ');
+    s = s.replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return s;
+  }
+
+  /**
+   * agrupComp:
+   *  - "nombre" → suma todas las unidades del mismo proveedor
+   *  - "nombre_unidad" → una fila por proveedor × SUPERMAT/GEOMACO
+   */
+  function rankByNombre(rows, modoAgrup) {
+    const modo = modoAgrup || (typeof agrupComp !== 'undefined' ? agrupComp : 'nombre');
+    const map = {};
+    rows.forEach(r => {
+      const claveNom = claveProveedor(r.nombre) || normalizar(r.nombre) || 'SIN PROVEEDOR';
+      const k = modo === 'nombre_unidad'
+        ? claveNom + '||' + (r.unidad || 'SIN UNIDAD')
+        : claveNom;
+      if (!map[k]) {
+        map[k] = {
+          nombre: r.nombre || 'Sin proveedor',
+          total: 0,
+          docs: 0,
+          tipos: new Set(),
+          unidades: new Set(),
+          _len: (r.nombre || '').length
+        };
+      }
+      map[k].total += r.total;
+      map[k].docs += r.docs || 1;
+      if (r.tipo) map[k].tipos.add(r.tipo);
+      if (r.unidad) map[k].unidades.add(r.unidad);
+      // Conservar el nombre más descriptivo (p.ej. con S.A.)
+      const len = (r.nombre || '').length;
+      if (r.nombre && r.nombre !== 'Sin proveedor' && len >= map[k]._len) {
+        map[k].nombre = r.nombre;
+        map[k]._len = len;
+      }
+    });
+    return Object.values(map)
+      .map(t => { delete t._len; return t; })
+      .sort((a, b) => b.total - a.total);
+  }
+
+  function serieMensual(rows) {
+    const by = {};
+    rows.forEach(r => {
+      by[r.mes] = (by[r.mes] || 0) + r.total;
+    });
+    const keys = Object.keys(by).sort();
+    return { labels: keys.map(k => {
+      const m = parseInt(k.slice(5, 7), 10);
+      return MESES[m] + ' ' + k.slice(2, 4);
+    }), keys, values: keys.map(k => by[k]) };
+  }
+
+  function renderKpis(elId, ranked, serie, labelFuente, rows) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const total = ranked.reduce((s, t) => s + t.total, 0);
+    const docs = ranked.reduce((s, t) => s + (t.docs || 0), 0);
+    const ticket = docs ? total / docs : 0;
+    const { n80 } = calcPareto(ranked, 'total');
+    const vals = serie.values || [];
+    let dPct = null;
+    if (vals.length >= 2) dPct = varPct(vals[vals.length - 1], vals[vals.length - 2]);
+    // Totales por unidad (rendimiento)
+    let sumSup = 0, sumGeo = 0;
+    (rows || []).forEach(r => {
+      if (r.unidad === 'SUPERMAT') sumSup += r.total;
+      else if (r.unidad === 'GEOMACO') sumGeo += r.total;
+    });
+    el.innerHTML = `
+      <div class="kpi"><div class="lab">Total período</div><div class="val">${escapeHtml(money(total))}</div><div class="sub">${escapeHtml(labelFuente)}</div></div>
+      <div class="kpi"><div class="lab">Proveedores</div><div class="val">${ranked.length}</div><div class="sub">${docs} documentos</div></div>
+      <div class="kpi"><div class="lab">Ticket medio</div><div class="val">${escapeHtml(money(ticket))}</div><div class="sub">$ / documento</div></div>
+      <div class="kpi"><div class="lab">Núcleo 80%</div><div class="val">${n80} de ${ranked.length || 0}</div><div class="sub">Pareto</div></div>
+      <div class="kpi"><div class="lab">SUPERMAT</div><div class="val" style="font-size:1rem">${escapeHtml(money(sumSup))}</div><div class="sub">${total ? ((sumSup / total) * 100).toFixed(0) : 0}% del total</div></div>
+      <div class="kpi"><div class="lab">GEOMACO</div><div class="val" style="font-size:1rem">${escapeHtml(money(sumGeo))}</div><div class="sub">${total ? ((sumGeo / total) * 100).toFixed(0) : 0}% del total</div></div>
+      <div class="kpi"><div class="lab">Var. último mes</div><div class="val ${dPct == null ? '' : (dPct >= 0 ? 'var-pos' : 'var-neg')}">${dPct == null ? '—' : ((dPct >= 0 ? '+' : '') + dPct.toFixed(1) + '%')}</div><div class="sub">vs mes anterior</div></div>
+    `;
+  }
+
+  function renderTabla(tbodyId, ranked, opts) {
+    const withTipo = opts && opts.withTipo;
+    const withUnidad = opts && opts.withUnidad;
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    const cols = 6 + (withTipo ? 1 : 0) + (withUnidad ? 1 : 0);
+    if (!ranked.length) {
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Sin datos en el período</td></tr>`;
+      return;
+    }
+    const { grand, n80 } = calcPareto(ranked, 'total');
+    let acum = 0;
+    tbody.innerHTML = ranked.map((t, i) => {
+      acum += t.total;
+      const pct = grand ? (t.total / grand) * 100 : 0;
+      const pctAc = grand ? (acum / grand) * 100 : 0;
+      const tipo = t.tipos ? [...t.tipos].join(', ') : (t.tipo || '—');
+      const unidad = t.unidades ? [...t.unidades].join(', ') : (t.unidad || '—');
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(t.nombre)}</td>
+        ${withUnidad ? `<td>${escapeHtml(unidad)}</td>` : ''}
+        ${withTipo ? `<td>${escapeHtml(tipo)}</td>` : ''}
+        <td class="num">${escapeHtml(money(t.total))}</td>
+        <td class="num">${pct.toFixed(1)}%</td>
+        <td class="num">${pctAc.toFixed(1)}%</td>
+        <td class="num">${t.docs || '—'}</td>
+        <td>${i < n80 ? 'Sí' : 'No'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  /** Paleta UNIBER — colores suaves, alto contraste, aptos para presentación */
+  const PALETTE = {
+    primary:   'rgba(23, 106, 138, 1)',
+    primarySoft: 'rgba(47, 155, 184, 0.85)',
+    primaryFill: 'rgba(47, 155, 184, 0.18)',
+    secondary: 'rgba(13, 148, 136, 1)',
+    secondaryFill: 'rgba(13, 148, 136, 0.16)',
+    accent:    'rgba(245, 158, 11, 1)',
+    accentFill:'rgba(245, 158, 11, 0.15)',
+    danger:    'rgba(225, 29, 72, 0.92)',
+    muted:     'rgba(148, 163, 184, 0.55)',
+    ink:       'rgba(15, 23, 42, 0.85)',
+    grid:      'rgba(148, 163, 184, 0.18)',
+    // Gradiente de barras Pareto (núcleo 80% → resto)
+    paretoCore: [
+      'rgba(15, 76, 110, 0.95)',
+      'rgba(23, 106, 138, 0.92)',
+      'rgba(30, 130, 165, 0.90)',
+      'rgba(47, 155, 184, 0.88)',
+      'rgba(56, 175, 190, 0.85)',
+      'rgba(45, 160, 150, 0.82)',
+      'rgba(34, 150, 130, 0.80)'
+    ],
+    paretoRest: 'rgba(148, 163, 184, 0.38)',
+    ticket:    'rgba(217, 119, 6, 0.82)',
+    ticketSoft:'rgba(251, 191, 36, 0.75)',
+    series: [
+      { border: 'rgba(23, 106, 138, 1)',  fill: 'rgba(47, 155, 184, 0.16)' },
+      { border: 'rgba(13, 148, 136, 1)',  fill: 'rgba(45, 212, 191, 0.14)' },
+      { border: 'rgba(217, 119, 6, 1)',   fill: 'rgba(251, 191, 36, 0.14)' },
+      { border: 'rgba(124, 58, 237, 0.9)', fill: 'rgba(167, 139, 250, 0.14)' }
+    ]
+  };
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function chartAnim() {
+    if (prefersReducedMotion()) {
+      return { duration: 0, easing: 'linear', delay: 0 };
+    }
+    return {
+      duration: 900,
+      easing: 'easeInOutCubic',
+      delay: (ctx) => {
+        // Barras: entrada escalonada; líneas: suave
+        if (ctx.type === 'data' && ctx.mode === 'default' && ctx.dataset && ctx.dataset.type !== 'line') {
+          return (ctx.dataIndex || 0) * 35;
+        }
+        return 0;
+      }
+    };
+  }
+
+  function applyChartDefaults() {
+    if (typeof Chart === 'undefined') return;
+    if (!Chart.__uniberDefaults) {
+      Chart.__uniberDefaults = true;
+      Chart.defaults.font.family = "'Segoe UI', Roboto, system-ui, sans-serif";
+      if (prefersReducedMotion()) {
+        Chart.defaults.animation = false;
+        Chart.defaults.transitions = {
+          active: { animation: { duration: 0 } },
+          resize: { animation: { duration: 0 } },
+          show: { animations: { colors: { duration: 0 }, numbers: { duration: 0 } } },
+          hide: { animations: { colors: { duration: 0 }, numbers: { duration: 0 } } }
+        };
+      }
+      Chart.defaults.font.size = 11;
+      Chart.defaults.color = PALETTE.ink;
+      Chart.defaults.borderColor = PALETTE.grid;
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+      Chart.defaults.elements.line.tension = 0.35;
+      Chart.defaults.elements.line.borderWidth = 2.5;
+      Chart.defaults.elements.point.radius = 3;
+      Chart.defaults.elements.point.hoverRadius = 6;
+      Chart.defaults.elements.point.hitRadius = 12;
+      Chart.defaults.elements.bar.borderRadius = 5;
+      Chart.defaults.elements.bar.borderSkipped = false;
+    }
+    // Tooltip HTML interactivo (externo)
+    Chart.defaults.plugins.tooltip.enabled = false;
+    Chart.defaults.plugins.tooltip.external = externalChartTooltip;
+  }
+
+  function externalChartTooltip(context) {
+    const tip = document.getElementById('chartTooltip');
+    if (!tip) return;
+    const { chart, tooltip } = context;
+    if (!tooltip || tooltip.opacity === 0) {
+      tip.classList.remove('show');
+      tip.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    const title = (tooltip.title || []).join(' · ') || '';
+    const lines = (tooltip.body || []).map((b, i) => {
+      const raw = (b.lines || []).join(' ');
+      const col = tooltip.labelColors && tooltip.labelColors[i]
+        ? tooltip.labelColors[i].backgroundColor || tooltip.labelColors[i].borderColor
+        : '#2f9bb8';
+      return { text: raw, color: col };
+    });
+    const foot = (tooltip.footer || []).join(' ');
+    tip.innerHTML =
+      (title ? `<div class="tt-title">${escapeHtml(title)}</div>` : '') +
+      lines.map(l =>
+        `<div class="tt-row"><span class="tt-dot" style="background:${escapeHtml(String(l.color))}"></span>` +
+        `<span class="tt-label">${escapeHtml(l.text.split(':')[0] || '')}</span>` +
+        `<span class="tt-val">${escapeHtml((l.text.split(':').slice(1).join(':') || l.text).trim())}</span></div>`
+      ).join('') +
+      (foot ? `<div class="tt-foot">${escapeHtml(foot)}</div>` : '');
+
+    const canvasRect = chart.canvas.getBoundingClientRect();
+    const x = canvasRect.left + tooltip.caretX;
+    const y = canvasRect.top + tooltip.caretY;
+    tip.style.left = Math.min(Math.max(x, 80), window.innerWidth - 80) + 'px';
+    tip.style.top = Math.max(y, 40) + 'px';
+    tip.classList.add('show');
+    tip.setAttribute('aria-hidden', 'false');
+  }
+
+  /** Captura un canvas de Chart.js como PNG (para Excel/PDF). */
+  function chartToPng(id, scale) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    try {
+      // Redibujar a mayor resolución si es posible
+      const chart = charts[id];
+      if (chart) {
+        const prev = chart.options.devicePixelRatio;
+        chart.options.devicePixelRatio = scale || 2;
+        chart.resize();
+        const url = canvas.toDataURL('image/png', 1.0);
+        chart.options.devicePixelRatio = prev || window.devicePixelRatio || 1;
+        chart.resize();
+        return url;
+      }
+      return canvas.toDataURL('image/png', 1.0);
+    } catch (e) {
+      try { return canvas.toDataURL('image/png'); } catch (e2) { return null; }
+    }
+  }
+
+  async function dataUrlToBuffer(dataUrl) {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return blob.arrayBuffer();
+  }
+
+  function resolveChartType(id, fallback) {
+
+    const p = chartPrefs[id] || {};
+    return p.type || fallback || 'line';
+  }
+
+  function applyFillForType(datasets, type) {
+    return datasets.map((ds, idx) => {
+      const copy = { ...ds };
+      const pal = PALETTE.series[idx % PALETTE.series.length];
+      if (!copy.borderColor) copy.borderColor = pal.border;
+      if (type === 'area') {
+        copy.fill = true;
+        copy.backgroundColor = copy.backgroundColor || pal.fill;
+        copy.pointBackgroundColor = pal.border;
+      } else if (type === 'bar') {
+        copy.fill = false;
+        copy.backgroundColor = copy.backgroundColor || pal.border.replace(/[\d.]+\)$/, '0.82)');
+        copy.borderRadius = 5;
+        copy.borderSkipped = false;
+      } else {
+        if (copy.fill == null) copy.fill = false;
+        copy.pointBackgroundColor = copy.pointBackgroundColor || '#fff';
+        copy.pointBorderColor = copy.borderColor || pal.border;
+        copy.pointBorderWidth = 2;
+      }
+      return copy;
+    });
+  }
+
+  function paretoBarColors(n, n80) {
+    const colors = [];
+    for (let i = 0; i < n; i++) {
+      if (i < n80) {
+        colors.push(PALETTE.paretoCore[i % PALETTE.paretoCore.length]);
+      } else {
+        colors.push(PALETTE.paretoRest);
+      }
+    }
+    return colors;
+  }
+
+  function chartLine(id, labels, datasets, yIsPct) {
+    applyChartDefaults();
+    const prefType = resolveChartType(id, 'line');
+    const chartType = prefType === 'area' ? 'line' : prefType;
+    const ds = applyFillForType(datasets, prefType);
+    chartMeta[id] = { kind: 'series', labels, datasets, yIsPct: !!yIsPct };
+
+    const existing = charts[id];
+    if (existing && existing.config && existing.config.type === chartType) {
+      existing.data.labels = labels;
+      existing.data.datasets = ds.map((d, i) => {
+        const prev = existing.data.datasets[i] || {};
+        return { ...prev, ...d, data: d.data };
+      });
+      // remove extra datasets
+      existing.data.datasets.length = ds.length;
+      existing.options.scales.y.ticks.callback = yIsPct ? (v) => v + '%' : moneyTick;
+      existing.update(chartAnim());
+      return;
+    }
+
+    destroyChart(id);
+    const ctx = document.getElementById(id);
+    if (!ctx || typeof Chart === 'undefined') return;
+    charts[id] = new Chart(ctx, {
+      type: chartType,
+      data: { labels, datasets: ds },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnim(),
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: (c) => yIsPct
+                ? `${c.dataset.label}: ${(c.raw || 0).toFixed(1)}%`
+                : `${c.dataset.label}: ${money(c.raw || 0)}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            grid: { color: PALETTE.grid },
+            ticks: {
+              font: { size: 10 },
+              callback: yIsPct ? (v) => v + '%' : moneyTick
+            }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 10 }, maxRotation: 45 }
+          }
+        }
+      }
+    });
+  }
+
+  function chartPareto(id, ranked, hintId) {
+    applyChartDefaults();
+    const topN = (chartPrefs[id] && chartPrefs[id].topN) || 10;
+    const { grand, n80 } = calcPareto(ranked, 'total');
+    const hint = document.getElementById(hintId);
+    if (hint) {
+      const pctCore = ranked.length
+        ? ((ranked.slice(0, n80).reduce((s, t) => s + t.total, 0) / (grand || 1)) * 100).toFixed(1)
+        : '0';
+      hint.textContent = ranked.length
+        ? `· Núcleo: ${n80} de ${ranked.length} (${pctCore}% del $) · vista ${Math.min(topN, ranked.length)}`
+        : '';
+    }
+    let acum = 0;
+    const top = ranked.slice(0, topN);
+    const labels = [];
+    const importes = [];
+    const acumPct = [];
+    const nombresFull = [];
+    top.forEach(t => {
+      acum += t.total;
+      nombresFull.push(t.nombre);
+      labels.push(t.nombre.length > 14 ? t.nombre.slice(0, 12) + '…' : t.nombre);
+      importes.push(t.total);
+      acumPct.push(grand ? (acum / grand) * 100 : 0);
+    });
+    if (ranked.length > topN) {
+      const resto = ranked.slice(topN).reduce((s, t) => s + t.total, 0);
+      labels.push('Otros (' + (ranked.length - topN) + ')');
+      nombresFull.push('');
+      importes.push(resto);
+      acumPct.push(100);
+    }
+    const barColors = paretoBarColors(importes.length, Math.min(n80, importes.length));
+    // El ítem "Otros" siempre en tono muted
+    if (ranked.length > topN) barColors[barColors.length - 1] = PALETTE.paretoRest;
+
+    chartMeta[id] = { kind: 'pareto', ranked, nombresFull, hintId, n80, grand };
+
+    const cfgData = {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Importe',
+          data: importes,
+          backgroundColor: barColors,
+          hoverBackgroundColor: barColors.map(c => c.replace(/[\d.]+\)$/, '1)')),
+          borderColor: barColors.map(c => c.replace(/[\d.]+\)$/, '1)')),
+          borderWidth: 0,
+          borderRadius: 6,
+          borderSkipped: false,
+          yAxisID: 'y',
+          order: 2,
+          barPercentage: 0.72,
+          categoryPercentage: 0.8
+        },
+        {
+          type: 'line',
+          label: '% acum. Pareto',
+          data: acumPct,
+          borderColor: PALETTE.danger,
+          backgroundColor: 'rgba(225, 29, 72, 0.08)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: PALETTE.danger,
+          pointBorderWidth: 2,
+          tension: 0.25,
+          fill: false,
+          yAxisID: 'y1',
+          order: 1
+        }
+      ]
+    };
+
+    const existing = charts[id];
+    if (existing) {
+      existing.data.labels = cfgData.labels;
+      existing.data.datasets[0].data = importes;
+      existing.data.datasets[0].backgroundColor = barColors;
+      existing.data.datasets[0].hoverBackgroundColor = cfgData.datasets[0].hoverBackgroundColor;
+      existing.data.datasets[0].borderColor = cfgData.datasets[0].borderColor;
+      existing.data.datasets[1].data = acumPct;
+      existing.update(chartAnim());
+      return;
+    }
+
+    destroyChart(id);
+    const ctx = document.getElementById(id);
+    if (!ctx || typeof Chart === 'undefined') return;
+    charts[id] = new Chart(ctx, {
+      type: 'bar',
+      data: cfgData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnim(),
+        transitions: {
+          active: { animation: { duration: 280 } }
+        },
+        onClick(evt, elements) {
+          if (!elements || !elements.length) return;
+          const ix = elements[0].index;
+          const meta = chartMeta[id];
+          const nombre = meta && meta.nombresFull ? meta.nombresFull[ix] : '';
+          if (!nombre) return;
+          const inp = document.getElementById('filtroQ');
+          if (inp) { inp.value = nombre; actualizarTodo(false); }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, font: { size: 10 }, padding: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              title(items) {
+                const ix = items[0] && items[0].dataIndex;
+                const meta = chartMeta[id];
+                return (meta && meta.nombresFull && meta.nombresFull[ix]) || (items[0] && items[0].label) || '';
+              },
+              label(c) {
+                if (c.dataset.yAxisID === 'y1') return `Acumulado: ${(c.raw || 0).toFixed(1)}%`;
+                const meta = chartMeta[id];
+                const enNucleo = c.dataIndex < (meta && meta.n80 != null ? meta.n80 : 0);
+                return `${money(c.raw || 0)}${enNucleo ? ' · Núcleo 80%' : ''}`;
+              },
+              afterBody(items) {
+                const ix = items[0] && items[0].dataIndex;
+                const meta = chartMeta[id];
+                if (!meta || meta.n80 == null) return [];
+                if (ix < meta.n80) return ['✓ Forma parte del núcleo Pareto'];
+                return ['Fuera del núcleo 80%'];
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            position: 'left',
+            grid: { color: PALETTE.grid },
+            ticks: { font: { size: 10 }, callback: moneyTick }
+          },
+          y1: {
+            position: 'right', min: 0, max: 100,
+            grid: { drawOnChartArea: false },
+            ticks: { font: { size: 10 }, callback: v => v + '%' }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 9 }, maxRotation: 45 }
+          }
+        }
+      },
+      plugins: [{
+        id: 'paretoGuides',
+        afterDraw(chart) {
+          const y1 = chart.scales.y1;
+          const area = chart.chartArea;
+          if (!y1 || !area) return;
+          const c = chart.ctx;
+          // Línea 80%
+          const y80 = y1.getPixelForValue(80);
+          c.save();
+          c.setLineDash([5, 4]);
+          c.strokeStyle = 'rgba(234, 88, 12, 0.95)';
+          c.lineWidth = 1.6;
+          c.beginPath();
+          c.moveTo(area.left, y80);
+          c.lineTo(area.right, y80);
+          c.stroke();
+          // Etiqueta píldora 80%
+          c.setLineDash([]);
+          const label = '80%';
+          c.font = 'bold 10px Segoe UI, sans-serif';
+          const tw = c.measureText(label).width;
+          const px = area.right - tw - 14;
+          const py = y80 - 12;
+          c.fillStyle = 'rgba(234, 88, 12, 0.92)';
+          c.beginPath();
+          if (c.roundRect) c.roundRect(px - 4, py - 3, tw + 10, 14, 4);
+          else c.rect(px - 4, py - 3, tw + 10, 14);
+          c.fill();
+          c.fillStyle = '#fff';
+          c.fillText(label, px, py + 7);
+          // Marca vertical del último del núcleo
+          const meta = chartMeta[id];
+          if (meta && meta.n80 > 0 && meta.n80 <= chart.data.labels.length) {
+            const xScale = chart.scales.x;
+            const x = xScale.getPixelForValue(meta.n80 - 1);
+            c.setLineDash([3, 3]);
+            c.strokeStyle = 'rgba(22, 163, 74, 0.55)';
+            c.lineWidth = 1.2;
+            c.beginPath();
+            c.moveTo(x, area.top);
+            c.lineTo(x, area.bottom);
+            c.stroke();
+          }
+          c.restore();
+        }
+      }]
+    });
+  }
+
+  function chartBarH(id, ranked) {
+    const topN = (chartPrefs[id] && chartPrefs[id].topN) || 10;
+    const top = ranked.slice(0, topN);
+    const labels = top.map(t => t.nombre.length > 16 ? t.nombre.slice(0, 14) + '…' : t.nombre);
+    const data = top.map(t => t.total);
+    const nombresFull = top.map(t => t.nombre);
+    chartMeta[id] = { kind: 'barH', ranked, nombresFull };
+
+    const existing = charts[id];
+    if (existing && existing.config && existing.config.type === 'bar') {
+      existing.data.labels = labels;
+      existing.data.datasets[0].data = data;
+      existing.update(chartAnim());
+      return;
+    }
+
+    destroyChart(id);
+    const ctx = document.getElementById(id);
+    if (!ctx || typeof Chart === 'undefined') return;
+    charts[id] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Importe',
+          data,
+          backgroundColor: PALETTE.primarySoft,
+          borderRadius: 3
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnim(),
+        onClick(evt, elements) {
+          if (!elements || !elements.length) return;
+          const ix = elements[0].index;
+          const meta = chartMeta[id];
+          const nombre = meta && meta.nombresFull ? meta.nombresFull[ix] : '';
+          if (!nombre) return;
+          const inp = document.getElementById('filtroQ');
+          if (inp) { inp.value = nombre; actualizarTodo(false); }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title(items) {
+                const ix = items[0] && items[0].dataIndex;
+                const meta = chartMeta[id];
+                return (meta && meta.nombresFull && meta.nombresFull[ix]) || '';
+              },
+              label: c => money(c.raw || 0)
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { callback: moneyTick, font: { size: 10 } } },
+          y: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  /** Serie mensual por unidad de negocio (SUPERMAT / GEOMACO). */
+  function serieMensualPorUnidad(rows) {
+    const by = {};
+    rows.forEach(r => {
+      if (!by[r.mes]) by[r.mes] = {};
+      const u = r.unidad || 'SIN UNIDAD';
+      by[r.mes][u] = (by[r.mes][u] || 0) + r.total;
+    });
+    const keys = Object.keys(by).sort();
+    const labels = keys.map(k => {
+      const m = parseInt(k.slice(5, 7), 10);
+      return MESES[m] + ' ' + k.slice(2, 4);
+    });
+    const unidades = ['SUPERMAT', 'GEOMACO'];
+    const colors = {
+      SUPERMAT: { border: PALETTE.primary, bg: PALETTE.primaryFill },
+      GEOMACO: { border: PALETTE.secondary, bg: PALETTE.secondaryFill }
+    };
+    const datasets = unidades.map(u => ({
+      label: u,
+      data: keys.map(k => by[k][u] || 0),
+      borderColor: colors[u].border,
+      backgroundColor: colors[u].bg,
+      fill: false,
+      tension: 0.25,
+      pointRadius: 3
+    }));
+    return { labels, keys, datasets, by };
+  }
+
+  function chartTicketMedio(id, ranked) {
+    const topN = (chartPrefs[id] && chartPrefs[id].topN) || 10;
+    const top = ranked.slice(0, topN).map(t => ({
+      nombre: t.nombre,
+      ticket: t.docs ? t.total / t.docs : t.total
+    }));
+    const labels = top.map(t => t.nombre.length > 16 ? t.nombre.slice(0, 14) + '…' : t.nombre);
+    const data = top.map(t => t.ticket);
+    const nombresFull = top.map(t => t.nombre);
+    chartMeta[id] = { kind: 'ticket', nombresFull };
+
+    const existing = charts[id];
+    if (existing) {
+      existing.data.labels = labels;
+      existing.data.datasets[0].data = data;
+      existing.update(chartAnim());
+      return;
+    }
+
+    destroyChart(id);
+    const ctx = document.getElementById(id);
+    if (!ctx || typeof Chart === 'undefined') return;
+    charts[id] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Ticket medio',
+          data,
+          backgroundColor: PALETTE.ticket,
+          borderRadius: 3
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnim(),
+        onClick(evt, elements) {
+          if (!elements || !elements.length) return;
+          const ix = elements[0].index;
+          const meta = chartMeta[id];
+          const nombre = meta && meta.nombresFull ? meta.nombresFull[ix] : '';
+          if (!nombre) return;
+          const inp = document.getElementById('filtroQ');
+          if (inp) { inp.value = nombre; actualizarTodo(false); }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title(items) {
+                const ix = items[0] && items[0].dataIndex;
+                const meta = chartMeta[id];
+                return (meta && meta.nombresFull && meta.nombresFull[ix]) || '';
+              },
+              label: c => 'Prom. ' + money(c.raw || 0) + ' / doc'
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { callback: moneyTick, font: { size: 10 } } },
+          y: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  function chartDoughnut(id, byTipo) {
+    destroyChart(id);
+    const ctx = document.getElementById(id);
+    if (!ctx || typeof Chart === 'undefined') return;
+    const labels = Object.keys(byTipo);
+    const data = labels.map(k => byTipo[k]);
+    const colors = {
+      abastecimiento: 'rgba(13, 148, 136, 0.88)',
+      transferencias: 'rgba(245, 158, 11, 0.88)',
+      clientes: 'rgba(47, 155, 184, 0.88)'
+    };
+    charts[id] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+        datasets: [{
+          data,
+          backgroundColor: labels.map(l => colors[l] || 'rgba(148,163,184,0.7)')
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+          tooltip: { callbacks: { label: c => `${c.label}: ${money(c.raw || 0)}` } }
+        }
+      }
+    });
+  }
+
+  // ——— Render panels ———
+  function actualizarComp() {
+    const f = filtroActual();
+    const found = findComprobantesData();
+    const all = loadComprobantesRows();
+    const rows = filtrarRows(all, f, null, unidadComp);
+    const ranked = rankByNombre(rows, agrupComp);
+    const serie = serieMensual(rows);
+    const vars = serie.values.map((v, i) => i === 0 ? null : varPct(v, serie.values[i - 1]));
+    const trend = movingAvg(serie.values, 3);
+
+    let msgVacio;
+    if (!(found.data || []).length) {
+      msgVacio = 'No hay comprobantes en localStorage (claves multifactura / comprobantes).';
+    } else if (!all.length) {
+      msgVacio = `Fuente ${found.key}: ${(found.data || []).length} comprobantes pero 0 filas con importe/fecha.`;
+    } else if (!rows.length) {
+      msgVacio = `${all.length} filas fuera del filtro año/mes/unidad (${unidadComp}). Probá ampliar el período.`;
+    } else {
+      msgVacio = `${rows.length} mov. · ${ranked.length} proveedores · unidad: ${unidadComp} · agrup: ${agrupComp} · fuente: ${found.key}`;
+    }
+    document.getElementById('metaComp').textContent =
+      `Año ${f.anio} · ${MESES[Math.min(f.mesDesde, f.mesHasta)]}–${MESES[Math.max(f.mesDesde, f.mesHasta)]} · ${msgVacio}`;
+
+    renderKpis('kpisComp', ranked, serie, 'Paquetería · ' + unidadComp, rows);
+    renderTabla('tbodyComp', ranked, { withUnidad: true });
+
+    chartLine('chartCompEvo', serie.labels, [{
+      label: 'Total $', data: serie.values,
+      borderColor: PALETTE.primary, backgroundColor: PALETTE.primaryFill,
+      fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 6
+    }]);
+    chartLine('chartCompVar', serie.labels, [{
+      label: 'Var %', data: vars.map(v => v == null ? 0 : v),
+      borderColor: PALETTE.accent, backgroundColor: PALETTE.accentFill,
+      fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 6
+    }], true);
+    chartPareto('chartCompPareto', ranked, 'paretoCompHint');
+    chartLine('chartCompTrend', serie.labels, [
+      { label: 'Total', data: serie.values, borderColor: 'rgba(100,116,139,0.45)', borderDash: [5, 4], pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
+      { label: 'MM 3m', data: trend, borderColor: 'rgba(22,163,74,0.95)', backgroundColor: 'rgba(22,163,74,0.08)', borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, tension: 0.35 }
+    ]);
+    chartBarH('chartCompTop', ranked);
+
+    // Rendimiento por unidad de negocio
+    const serieU = serieMensualPorUnidad(rows);
+    chartLine('chartCompUnidades', serieU.labels, serieU.datasets);
+    chartTicketMedio('chartCompTicket', ranked);
+
+    return { ranked, serie, rows };
+  }
+
+  function actualizarCortes() {
+    const f = filtroActual();
+    const all = loadCortesRows();
+    const rows = filtrarRows(all, f, tipoCortes);
+    const ranked = rankByNombre(rows);
+    const serie = serieMensual(rows);
+    const vars = serie.values.map((v, i) => i === 0 ? null : varPct(v, serie.values[i - 1]));
+    const trend = movingAvg(serie.values, 3);
+    const byTipo = {};
+    filtrarRows(all, f, 'todos').forEach(r => {
+      byTipo[r.tipo] = (byTipo[r.tipo] || 0) + r.total;
+    });
+
+    document.getElementById('metaCortes').textContent =
+      `Año ${f.anio} · tipo: ${tipoCortes} · ${rows.length} facturas de corte · ${ranked.length} transportistas/proveedores`;
+
+    renderKpis('kpisCortes', ranked, serie, 'Cortes · ' + tipoCortes);
+    renderTabla('tbodyCortes', ranked, { withTipo: true });
+
+    chartLine('chartCortesEvo', serie.labels, [{
+      label: 'Total $', data: serie.values,
+      borderColor: PALETTE.secondary, backgroundColor: PALETTE.secondaryFill,
+      fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 6
+    }]);
+    chartDoughnut('chartCortesMix', byTipo);
+    chartPareto('chartCortesPareto', ranked, 'paretoCortesHint');
+    chartLine('chartCortesVar', serie.labels, [{
+      label: 'Var %', data: vars.map(v => v == null ? 0 : v),
+      borderColor: PALETTE.accent, backgroundColor: PALETTE.accentFill,
+      fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 6
+    }], true);
+    chartLine('chartCortesTrend', serie.labels, [
+      { label: 'Total', data: serie.values, borderColor: 'rgba(100,116,139,0.45)', borderDash: [5, 4], pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
+      { label: 'MM 3', data: trend, borderColor: 'rgba(22,163,74,0.95)', backgroundColor: 'rgba(22,163,74,0.08)', borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, tension: 0.35 }
+    ]);
+
+    return { ranked, serie, rows, byTipo };
+  }
+
+  function actualizarTodo(forceReload) {
+    if (forceReload) DataCache.invalidate();
+    // Solo re-renderizar pestaña activa al filtrar; ambas al forzar o al inicio
+    if (forceReload || tabActiva === 'comp') actualizarComp();
+    if (forceReload || tabActiva === 'cortes') actualizarCortes();
+    if (forceReload) {
+      // precargar la otra pestaña en idle
+      const other = tabActiva === 'comp' ? actualizarCortes : actualizarComp;
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(() => other(), { timeout: 800 });
+      else setTimeout(other, 50);
+    }
+  }
+
+  function poblarAnios() {
+    const sel = document.getElementById('filtroAnio');
+    const years = new Set();
+    // Una sola lectura (con caché)
+    const comp = loadComprobantesRows();
+    const cortes = loadCortesRows();
+    for (let i = 0; i < comp.length; i++) {
+      const y = parseInt(comp[i].mes.slice(0, 4), 10);
+      if (y) years.add(y);
+    }
+    for (let i = 0; i < cortes.length; i++) {
+      const y = parseInt(cortes[i].mes.slice(0, 4), 10);
+      if (y) years.add(y);
+    }
+    const yNow = new Date().getFullYear();
+    years.add(yNow);
+    const list = [...years].filter(y => !isNaN(y)).sort((a, b) => b - a);
+    sel.innerHTML = list.map(y => `<option value="${y}">${y}</option>`).join('');
+    sel.value = String(list[0]);
+    const mesHasta = document.getElementById('filtroMesHasta');
+    if (mesHasta && !mesHasta.dataset.init) {
+      mesHasta.value = String(new Date().getMonth() + 1);
+      mesHasta.dataset.init = '1';
+    }
+  }
+
+  const TEMAS_BODY = ['theme-geomaco', 'theme-abastecimiento', 'theme-transferencias', 'theme-clientes'];
+  const CONTRAST_KEY = 'uniber_reportes_alto_contraste';
+
+  function limpiarTemasBody() {
+    document.body.classList.remove(...TEMAS_BODY);
+  }
+
+  function flashThemeTransition(chipEl) {
+    if (prefersReducedMotion()) return;
+    document.body.classList.add('theme-switching');
+    if (chipEl) {
+      chipEl.classList.remove('theme-flash');
+      void chipEl.offsetWidth;
+      chipEl.classList.add('theme-flash');
+    }
+    setTimeout(() => document.body.classList.remove('theme-switching'), 700);
+  }
+
+  function setAltoContraste(on) {
+    document.body.classList.toggle('theme-contrast', !!on);
+    const btn = document.getElementById('btnContrast');
+    if (btn) {
+      btn.classList.toggle('active', !!on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.textContent = on ? 'Contraste ON' : 'Alto contraste';
+    }
+    try { localStorage.setItem(CONTRAST_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+
+  function initAltoContraste() {
+    let on = false;
+    try { on = localStorage.getItem(CONTRAST_KEY) === '1'; } catch (e) {}
+    // También respetar prefers-contrast si el usuario no eligió aún
+    if (!on) {
+      try {
+        const stored = localStorage.getItem(CONTRAST_KEY);
+        if (stored == null && window.matchMedia('(prefers-contrast: more)').matches) on = true;
+      } catch (e) {}
+    }
+    setAltoContraste(on);
+  }
+
+  function aplicarTemaUnidad(unidad) {
+    // Solo aplica en pestaña Comprobantes
+    limpiarTemasBody();
+    if (unidad === 'GEOMACO') document.body.classList.add('theme-geomaco');
+  }
+
+  function aplicarTemaCortes(tipo) {
+    // Solo aplica en pestaña Cortes
+    limpiarTemasBody();
+    if (tipo === 'abastecimiento') document.body.classList.add('theme-abastecimiento');
+    else if (tipo === 'transferencias') document.body.classList.add('theme-transferencias');
+    else if (tipo === 'clientes') document.body.classList.add('theme-clientes');
+    // 'todos' → sin clase extra = color original
+  }
+
+  function aplicarTemaSegunPestana() {
+    if (tabActiva === 'cortes') aplicarTemaCortes(tipoCortes);
+    else aplicarTemaUnidad(unidadComp);
+  }
+
+  // Tabs: reutiliza caché; aplica tema según pestaña y filtro activo
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabActiva = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(b => {
+        const on = b.dataset.tab === tabActiva;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        const on = p.dataset.panel === tabActiva;
+        p.classList.toggle('active', on);
+        if (on) p.removeAttribute('hidden');
+        else p.setAttribute('hidden', '');
+      });
+      aplicarTemaSegunPestana();
+      requestAnimationFrame(() => {
+        if (tabActiva === 'comp') actualizarComp();
+        else actualizarCortes();
+      });
+    });
+  });
+
+  document.getElementById('chipsTipoCortes')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    tipoCortes = chip.dataset.tipo || 'todos';
+    document.querySelectorAll('#chipsTipoCortes .chip').forEach(c => c.classList.toggle('active', c.dataset.tipo === tipoCortes));
+    aplicarTemaCortes(tipoCortes);
+    flashThemeTransition(chip);
+    actualizarCortes();
+  });
+
+  document.getElementById('chipsUnidadComp')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    unidadComp = chip.dataset.unidad || 'todas';
+    document.querySelectorAll('#chipsUnidadComp .chip').forEach(c => c.classList.toggle('active', c.dataset.unidad === unidadComp));
+    aplicarTemaUnidad(unidadComp);
+    flashThemeTransition(chip);
+    actualizarComp();
+  });
+
+  document.getElementById('chipsAgrupacionComp')?.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    agrupComp = chip.dataset.agrup || 'nombre';
+    document.querySelectorAll('#chipsAgrupacionComp .chip').forEach(c => c.classList.toggle('active', c.dataset.agrup === agrupComp));
+    actualizarComp();
+  });
+
+
+  /** Controles dinámicos de gráficos: tipo (línea/barras/área) y top N */
+  function initChartTools() {
+    document.querySelectorAll('.chart-tools').forEach(tools => {
+      if (tools.dataset.bound) return;
+      tools.dataset.bound = '1';
+      tools.addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const id = tools.getAttribute('data-for');
+        if (!id) return;
+        if (!chartPrefs[id]) chartPrefs[id] = {};
+
+        if (btn.dataset.type) {
+          chartPrefs[id].type = btn.dataset.type;
+          tools.querySelectorAll('button[data-type]').forEach(b => b.classList.toggle('active', b === btn));
+          // Re-render pestaña activa
+          if (tabActiva === 'comp') actualizarComp();
+          else actualizarCortes();
+          return;
+        }
+        if (btn.dataset.action) {
+          const map = { top5: 5, top10: 10, top15: 15, all: 25 };
+          chartPrefs[id].topN = map[btn.dataset.action] || 10;
+          tools.querySelectorAll('button[data-action]').forEach(b => b.classList.toggle('active', b === btn));
+          if (tabActiva === 'comp') actualizarComp();
+          else actualizarCortes();
+        }
+      });
+    });
+  }
+
+  document.getElementById('btnActualizar')?.addEventListener('click', () => actualizarTodo(true));
+  document.getElementById('btnAplicar')?.addEventListener('click', () => actualizarTodo(false));
+  document.getElementById('filtroQ')?.addEventListener('input', () => {
+    clearTimeout(window._repQ);
+    window._repQ = setTimeout(() => actualizarTodo(false), 220);
+  });
+  // Filtros año/mes: solo re-filtrar en memoria
+  ['filtroAnio', 'filtroMesDesde', 'filtroMesHasta'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => actualizarTodo(false));
+  });
+
+  function periodoLabel(f) {
+    return `${MESES[Math.min(f.mesDesde, f.mesHasta)]}–${MESES[Math.max(f.mesDesde, f.mesHasta)]} ${f.anio}`;
+  }
+
+  function buildContextoExport() {
+    const f = filtroActual();
+    const rowsComp = filtrarRows(loadComprobantesRows(), f, null, unidadComp);
+    const rankedComp = rankByNombre(rowsComp, agrupComp);
+    const serieComp = serieMensual(rowsComp);
+    const rowsCortes = filtrarRows(loadCortesRows(), f, tipoCortes);
+    const rankedCortes = rankByNombre(rowsCortes);
+    const serieCortes = serieMensual(rowsCortes);
+    const totComp = rankedComp.reduce((s, t) => s + t.total, 0);
+    const docsComp = rankedComp.reduce((s, t) => s + (t.docs || 0), 0);
+    const pComp = calcPareto(rankedComp, 'total');
+    const totCortes = rankedCortes.reduce((s, t) => s + t.total, 0);
+    const pCortes = calcPareto(rankedCortes, 'total');
+    let sumSup = 0, sumGeo = 0;
+    rowsComp.forEach(r => {
+      if (r.unidad === 'SUPERMAT') sumSup += r.total;
+      else if (r.unidad === 'GEOMACO') sumGeo += r.total;
+    });
+    return {
+      f, rowsComp, rankedComp, serieComp, totComp, docsComp, pComp, sumSup, sumGeo,
+      rowsCortes, rankedCortes, serieCortes, totCortes, pCortes,
+      periodo: periodoLabel(f),
+      generado: new Date().toLocaleString('es-AR')
+    };
+  }
+
+  // ——— Excel profesional (presentación) ———
+  document.getElementById('btnExcel')?.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') return alert('ExcelJS no disponible');
+    const ctx = buildContextoExport();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'UNIBER · Portal de Fletes';
+    wb.company = 'UNIBER';
+    wb.title = `Reportes ${ctx.periodo}`;
+    wb.subject = 'Comprobantes paquetería y Cortes semanales';
+    wb.created = new Date();
+
+    const BRAND = {
+      dark: '0A2433', accent: '176A8A', light: 'E8F1F6', white: 'FFFFFF',
+      muted: '64748B', ok: '16A34A'
+    };
+
+    function styleHeaderRow(ws, rowNum, cols) {
+      const row = ws.getRow(rowNum);
+      for (let i = 1; i <= cols; i++) {
+        const c = row.getCell(i);
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.dark } };
+        c.font = { bold: true, color: { argb: 'FF' + BRAND.white }, size: 11, name: 'Calibri' };
+        c.alignment = { vertical: 'middle', horizontal: i === 1 ? 'left' : 'center' };
+      }
+      row.height = 22;
+    }
+    function styleColHeader(ws, rowNum, cols) {
+      const row = ws.getRow(rowNum);
+      for (let i = 1; i <= cols; i++) {
+        const c = row.getCell(i);
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.light } };
+        c.font = { bold: true, color: { argb: 'FF' + BRAND.dark }, size: 10, name: 'Calibri' };
+        c.border = { bottom: { style: 'medium', color: { argb: 'FF' + BRAND.accent } } };
+        c.alignment = { vertical: 'middle', wrapText: true };
+      }
+      row.height = 20;
+    }
+    function zebra(ws, from, to, cols) {
+      for (let r = from; r <= to; r++) {
+        if ((r - from) % 2 === 1) {
+          for (let i = 1; i <= cols; i++) {
+            ws.getRow(r).getCell(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7FAFC' } };
+          }
+        }
+      }
+    }
+
+    // Portada / Resumen
+    {
+      const ws = wb.addWorksheet('Resumen ejecutivo', { views: [{ showGridLines: false }] });
+      ws.mergeCells('A1:G1');
+      ws.getCell('A1').value = 'UNIBER · Portal de Fletes';
+      ws.getCell('A1').font = { bold: true, size: 16, color: { argb: 'FF' + BRAND.white }, name: 'Calibri' };
+      ws.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.dark } };
+      ws.getCell('A1').alignment = { vertical: 'middle' };
+      ws.getRow(1).height = 32;
+      ws.mergeCells('A2:G2');
+      ws.getCell('A2').value = `Informe de resultados · ${ctx.periodo}`;
+      ws.getCell('A2').font = { bold: true, size: 13, color: { argb: 'FF' + BRAND.dark } };
+      ws.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.light } };
+      ws.mergeCells('A3:G3');
+      ws.getCell('A3').value = `Generado: ${ctx.generado}  ·  Unidad: ${unidadComp}  ·  Cortes tipo: ${tipoCortes}  ·  Confidencial`;
+      ws.getCell('A3').font = { size: 9, color: { argb: 'FF' + BRAND.muted }, italic: true };
+
+      ws.getCell('A5').value = 'COMPROBANTES · PAQUETERÍA';
+      ws.getCell('A5').font = { bold: true, size: 11, color: { argb: 'FF' + BRAND.accent } };
+      ws.mergeCells('A5:C5');
+      ['Indicador', 'Valor'].forEach((h, i) => { ws.getCell(6, i + 1).value = h; });
+      styleColHeader(ws, 6, 2);
+      const kpisComp = [
+        ['Total período', ctx.totComp, '$#,##0'],
+        ['Documentos', ctx.docsComp, '#,##0'],
+        ['Proveedores', ctx.rankedComp.length, '#,##0'],
+        ['Ticket medio', ctx.docsComp ? ctx.totComp / ctx.docsComp : 0, '$#,##0'],
+        ['Núcleo Pareto 80%', ctx.pComp.n80 + ' de ' + ctx.rankedComp.length, null],
+        ['SUPERMAT', ctx.sumSup, '$#,##0'],
+        ['GEOMACO', ctx.sumGeo, '$#,##0']
+      ];
+      kpisComp.forEach((k, i) => {
+        ws.getCell(7 + i, 1).value = k[0];
+        ws.getCell(7 + i, 2).value = k[1];
+        if (k[2]) ws.getCell(7 + i, 2).numFmt = k[2];
+        ws.getCell(7 + i, 2).font = { bold: true, size: 11 };
+      });
+
+      ws.getCell('E5').value = 'CORTES SEMANALES';
+      ws.getCell('E5').font = { bold: true, size: 11, color: { argb: 'FF0D9488' } };
+      ws.mergeCells('E5:G5');
+      ws.getCell(6, 5).value = 'Indicador';
+      ws.getCell(6, 6).value = 'Valor';
+      for (let i = 5; i <= 6; i++) {
+        const c = ws.getCell(6, i);
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.light } };
+        c.font = { bold: true, color: { argb: 'FF' + BRAND.dark }, size: 10 };
+        c.border = { bottom: { style: 'medium', color: { argb: 'FF0D9488' } } };
+      }
+      [
+        ['Total período', ctx.totCortes, '$#,##0'],
+        ['Proveedores', ctx.rankedCortes.length, '#,##0'],
+        ['Núcleo Pareto 80%', ctx.pCortes.n80 + ' de ' + ctx.rankedCortes.length, null],
+        ['Tipo filtro', tipoCortes, null]
+      ].forEach((k, i) => {
+        ws.getCell(7 + i, 5).value = k[0];
+        ws.getCell(7 + i, 6).value = k[1];
+        if (k[2]) ws.getCell(7 + i, 6).numFmt = k[2];
+        ws.getCell(7 + i, 6).font = { bold: true, size: 11 };
+      });
+
+      const startEvo = 16;
+      ws.getCell('A' + startEvo).value = 'EVOLUCIÓN MENSUAL · COMPROBANTES';
+      ws.getCell('A' + startEvo).font = { bold: true, size: 11, color: { argb: 'FF' + BRAND.accent } };
+      ws.mergeCells(`A${startEvo}:D${startEvo}`);
+      ['Mes', 'Total $', 'Var. %', 'Acumulado $'].forEach((h, i) => { ws.getCell(startEvo + 1, i + 1).value = h; });
+      styleColHeader(ws, startEvo + 1, 4);
+      let acum = 0;
+      ctx.serieComp.keys.forEach((k, i) => {
+        const v = ctx.serieComp.values[i];
+        acum += v;
+        const prev = i > 0 ? ctx.serieComp.values[i - 1] : null;
+        const vp = prev == null || prev === 0 ? null : (v - prev) / Math.abs(prev);
+        const r = startEvo + 2 + i;
+        ws.getCell(r, 1).value = ctx.serieComp.labels[i];
+        ws.getCell(r, 2).value = v; ws.getCell(r, 2).numFmt = '$#,##0';
+        if (vp != null) { ws.getCell(r, 3).value = vp; ws.getCell(r, 3).numFmt = '0.0%'; }
+        else ws.getCell(r, 3).value = '—';
+        ws.getCell(r, 4).value = acum; ws.getCell(r, 4).numFmt = '$#,##0';
+      });
+      if (ctx.serieComp.keys.length) zebra(ws, startEvo + 2, startEvo + 1 + ctx.serieComp.keys.length, 4);
+
+      ws.columns = [{ width: 28 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 22 }, { width: 16 }, { width: 12 }];
+      ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    }
+
+    function sheetRanking(title, ranked, opts) {
+      const ws = wb.addWorksheet(title);
+      const withUnidad = opts && opts.withUnidad;
+      const withTipo = opts && opts.withTipo;
+      const headers = ['#', 'Proveedor / Transporte'];
+      if (withUnidad) headers.push('Unidad');
+      if (withTipo) headers.push('Tipo');
+      headers.push('Importe $', '% total', '% acum.', 'Docs', 'Ticket medio', 'Núcleo 80%');
+
+      ws.mergeCells(1, 1, 1, headers.length);
+      ws.getCell(1, 1).value = `UNIBER · ${title} · ${ctx.periodo}`;
+      styleHeaderRow(ws, 1, headers.length);
+      ws.mergeCells(2, 1, 2, headers.length);
+      ws.getCell(2, 1).value = `Generado ${ctx.generado} · Confidencial`;
+      ws.getCell(2, 1).font = { size: 9, italic: true, color: { argb: 'FF' + BRAND.muted } };
+      headers.forEach((h, i) => { ws.getCell(4, i + 1).value = h; });
+      styleColHeader(ws, 4, headers.length);
+
+      const { grand, n80 } = calcPareto(ranked, 'total');
+      let acum = 0;
+      ranked.forEach((t, i) => {
+        acum += t.total;
+        const r = 5 + i;
+        let col = 1;
+        ws.getCell(r, col++).value = i + 1;
+        ws.getCell(r, col++).value = t.nombre;
+        if (withUnidad) ws.getCell(r, col++).value = t.unidades ? [...t.unidades].join(', ') : (t.unidad || '—');
+        if (withTipo) ws.getCell(r, col++).value = t.tipos ? [...t.tipos].join(', ') : (t.tipo || '—');
+        ws.getCell(r, col).value = t.total; ws.getCell(r, col++).numFmt = '$#,##0';
+        ws.getCell(r, col).value = grand ? t.total / grand : 0; ws.getCell(r, col++).numFmt = '0.0%';
+        ws.getCell(r, col).value = grand ? acum / grand : 0; ws.getCell(r, col++).numFmt = '0.0%';
+        ws.getCell(r, col++).value = t.docs || 0;
+        const ticket = t.docs ? t.total / t.docs : t.total;
+        ws.getCell(r, col).value = ticket; ws.getCell(r, col++).numFmt = '$#,##0';
+        const nucleo = i < n80 ? 'Sí' : 'No';
+        ws.getCell(r, col).value = nucleo;
+        if (nucleo === 'Sí') ws.getCell(r, col).font = { bold: true, color: { argb: 'FF' + BRAND.ok } };
+      });
+      if (ranked.length) zebra(ws, 5, 4 + ranked.length, headers.length);
+      const tr = 5 + ranked.length;
+      ws.getCell(tr, 2).value = 'TOTAL';
+      ws.getCell(tr, 2).font = { bold: true };
+      let totCol = 3 + (withUnidad ? 1 : 0) + (withTipo ? 1 : 0);
+      ws.getCell(tr, totCol).value = grand; ws.getCell(tr, totCol).numFmt = '$#,##0';
+      ws.getCell(tr, totCol).font = { bold: true };
+      for (let i = 1; i <= headers.length; i++) {
+        ws.getCell(tr, i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BRAND.light } };
+        ws.getCell(tr, i).border = { top: { style: 'medium', color: { argb: 'FF' + BRAND.accent } } };
+      }
+      ws.columns = headers.map((h, i) => {
+        if (i === 0) return { width: 5 };
+        if (i === 1) return { width: 36 };
+        if (h === 'Unidad' || h === 'Tipo') return { width: 14 };
+        if (h.includes('%')) return { width: 10 };
+        if (h === 'Docs') return { width: 8 };
+        return { width: 14 };
+      });
+      ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
+      ws.views = [{ state: 'frozen', ySplit: 4 }];
+      ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    }
+
+    sheetRanking('Paquetería ranking', ctx.rankedComp, { withUnidad: true });
+    sheetRanking('Cortes ranking', ctx.rankedCortes, { withTipo: true });
+
+    // Evolución top proveedores
+    {
+      const ws = wb.addWorksheet('Evolución top proveedores');
+      const top = ctx.rankedComp.slice(0, 15);
+      const meses = ctx.serieComp.keys;
+      ws.mergeCells(1, 1, 1, 2 + Math.max(meses.length, 1));
+      ws.getCell(1, 1).value = `UNIBER · Evolución mensual top proveedores · ${ctx.periodo}`;
+      styleHeaderRow(ws, 1, 2 + Math.max(meses.length, 1));
+      const headers = ['#', 'Proveedor', ...ctx.serieComp.labels, 'Total'];
+      headers.forEach((h, i) => { ws.getCell(3, i + 1).value = h; });
+      styleColHeader(ws, 3, headers.length);
+      const byProvMes = {};
+      ctx.rowsComp.forEach(r => {
+        const k = normalizar(r.nombre);
+        if (!byProvMes[k]) byProvMes[k] = { nombre: r.nombre, meses: {} };
+        byProvMes[k].meses[r.mes] = (byProvMes[k].meses[r.mes] || 0) + r.total;
+      });
+      top.forEach((t, i) => {
+        const k = normalizar(t.nombre);
+        const g = byProvMes[k] || { meses: {} };
+        const r = 4 + i;
+        ws.getCell(r, 1).value = i + 1;
+        ws.getCell(r, 2).value = t.nombre;
+        meses.forEach((m, mi) => {
+          ws.getCell(r, 3 + mi).value = g.meses[m] || 0;
+          ws.getCell(r, 3 + mi).numFmt = '$#,##0';
+        });
+        ws.getCell(r, 3 + meses.length).value = t.total;
+        ws.getCell(r, 3 + meses.length).numFmt = '$#,##0';
+        ws.getCell(r, 3 + meses.length).font = { bold: true };
+      });
+      if (top.length) zebra(ws, 4, 3 + top.length, headers.length);
+      ws.columns = [{ width: 5 }, { width: 32 }, ...meses.map(() => ({ width: 11 })), { width: 14 }];
+      ws.views = [{ state: 'frozen', xSplit: 2, ySplit: 3 }];
+    }
+
+
+    // —— Hoja Gráficos (PNG embebidos de Chart.js) ——
+    {
+      // Asegurar gráficos renderizados
+      actualizarComp();
+      actualizarCortes();
+      await new Promise(r => setTimeout(r, 280));
+
+      const ws = wb.addWorksheet('Gráficos', { views: [{ showGridLines: false }] });
+      ws.mergeCells('A1:L1');
+      ws.getCell('A1').value = `UNIBER · Gráficos del informe · ${ctx.periodo}`;
+      ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      ws.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A2433' } };
+      ws.getRow(1).height = 28;
+
+      const chartList = [
+        { id: 'chartCompEvo', title: 'Paquetería · Evolución mensual $' },
+        { id: 'chartCompVar', title: 'Paquetería · Variación %' },
+        { id: 'chartCompPareto', title: 'Paquetería · Pareto 80/20' },
+        { id: 'chartCompTrend', title: 'Paquetería · Tendencia MM3' },
+        { id: 'chartCompTop', title: 'Paquetería · Top transportes' },
+        { id: 'chartCompUnidades', title: 'Paquetería · SUPERMAT vs GEOMACO' },
+        { id: 'chartCompTicket', title: 'Paquetería · Ticket medio' },
+        { id: 'chartCortesEvo', title: 'Cortes · Evolución $' },
+        { id: 'chartCortesMix', title: 'Cortes · Composición por tipo' },
+        { id: 'chartCortesPareto', title: 'Cortes · Pareto 80/20' },
+        { id: 'chartCortesVar', title: 'Cortes · Variación %' },
+        { id: 'chartCortesTrend', title: 'Cortes · Tendencia' }
+      ];
+
+      let row = 3;
+      for (const ch of chartList) {
+        const url = chartToPng(ch.id, 2);
+        if (!url) continue;
+        try {
+          const bufImg = await dataUrlToBuffer(url);
+          const imgId = wb.addImage({ buffer: bufImg, extension: 'png' });
+          ws.getCell(row, 1).value = ch.title;
+          ws.getCell(row, 1).font = { bold: true, size: 11, color: { argb: 'FF176A8A' } };
+          ws.mergeCells(row, 1, row, 8);
+          row += 1;
+          // ~ 18cm x 9cm approx in Excel rows
+          ws.addImage(imgId, {
+            tl: { col: 0.2, row: row - 0.2 },
+            ext: { width: 720, height: 320 }
+          });
+          row += 18;
+        } catch (e) {
+          console.warn('Excel chart embed', ch.id, e);
+        }
+      }
+      ws.getCell(row + 1, 1).value = 'Los gráficos reflejan los filtros activos al exportar (año, mes, unidad, tipo de corte y búsqueda).';
+      ws.getCell(row + 1, 1).font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `UNIBER_Reportes_${ctx.f.anio}_${String(ctx.f.mesDesde).padStart(2, '0')}-${String(ctx.f.mesHasta).padStart(2, '0')}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2500);
+  });
+
+  // ——— PDF profesional (presentación) ———
+  document.getElementById('btnPdf')?.addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) return alert('jsPDF no disponible');
+    const ctx = buildContextoExport();
+    const isComp = tabActiva === 'comp';
+    const ranked = isComp ? ctx.rankedComp : ctx.rankedCortes;
+    const serie = isComp ? ctx.serieComp : ctx.serieCortes;
+    const total = isComp ? ctx.totComp : ctx.totCortes;
+    const pInfo = isComp ? ctx.pComp : ctx.pCortes;
+    const tituloSec = isComp ? 'Comprobantes · Paquetería' : 'Cortes semanales';
+
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 14;
+
+    function footer(page, totalPages) {
+      doc.setDrawColor(23, 106, 138);
+      doc.setLineWidth(0.4);
+      doc.line(margin, pageH - 10, pageW - margin, pageH - 10);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`UNIBER · Confidencial · ${ctx.generado}`, margin, pageH - 5);
+      doc.text(`${page} / ${totalPages}`, pageW - margin, pageH - 5, { align: 'right' });
+    }
+    function headerBar(title, subtitle) {
+      doc.setFillColor(10, 36, 51);
+      doc.rect(0, 0, pageW, 18, 'F');
+      doc.setFillColor(23, 106, 138);
+      doc.rect(0, 18, pageW, 1.2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('UNIBER · Portal de Fletes', margin, 8);
+      doc.setFontSize(13);
+      doc.text(title, margin, 14.5);
+      if (subtitle) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(184, 212, 227);
+        doc.text(subtitle, pageW - margin, 12, { align: 'right' });
+      }
+    }
+
+    // Portada
+    doc.setFillColor(10, 36, 51);
+    doc.rect(0, 0, pageW, pageH, 'F');
+    doc.setFillColor(23, 106, 138);
+    doc.rect(0, pageH - 14, pageW, 14, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('UNIBER', pageW / 2, 48, { align: 'center' });
+    doc.setFontSize(16);
+    doc.setTextColor(184, 212, 227);
+    doc.text('Informe de resultados', pageW / 2, 60, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(tituloSec, pageW / 2, 72, { align: 'center' });
+    doc.setFontSize(12);
+    doc.setTextColor(138, 180, 201);
+    doc.text(ctx.periodo + (isComp ? `  ·  Unidad: ${unidadComp}` : `  ·  Tipo: ${tipoCortes}`), pageW / 2, 84, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text('Pareto 80/20 · evolución $ · variaciones % · tendencias', pageW / 2, 96, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Generado ${ctx.generado}`, pageW / 2, pageH - 5, { align: 'center' });
+
+    // KPIs
+    doc.addPage();
+    headerBar('Resumen ejecutivo', ctx.periodo);
+    const kpiCards = isComp
+      ? [
+          { t: 'Total período', v: money(total) },
+          { t: 'Documentos', v: String(ctx.docsComp) },
+          { t: 'Proveedores', v: String(ranked.length) },
+          { t: 'Ticket medio', v: money(ctx.docsComp ? total / ctx.docsComp : 0) },
+          { t: 'Núcleo 80%', v: `${pInfo.n80} de ${ranked.length}` },
+          { t: 'SUPERMAT', v: money(ctx.sumSup) },
+          { t: 'GEOMACO', v: money(ctx.sumGeo) },
+          { t: 'Participación SUP', v: total ? ((ctx.sumSup / total) * 100).toFixed(1) + '%' : '—' }
+        ]
+      : [
+          { t: 'Total período', v: money(total) },
+          { t: 'Proveedores', v: String(ranked.length) },
+          { t: 'Núcleo 80%', v: `${pInfo.n80} de ${ranked.length}` },
+          { t: 'Tipo filtro', v: tipoCortes }
+        ];
+    const cardW = 64, cardH = 28, gap = 6, cols = 4;
+    kpiCards.forEach((k, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = margin + col * (cardW + gap);
+      const y = 28 + row * (cardH + gap);
+      doc.setFillColor(232, 241, 246);
+      doc.roundedRect(x, y, cardW, cardH, 2, 2, 'F');
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(k.t.toUpperCase(), x + 4, y + 9);
+      doc.setTextColor(10, 36, 51);
+      doc.setFontSize(11);
+      doc.text(String(k.v).substring(0, 22), x + 4, y + 20);
+    });
+
+    let yEvo = 28 + Math.ceil(kpiCards.length / cols) * (cardH + gap) + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(10, 36, 51);
+    doc.text('Evolución mensual', margin, yEvo);
+    const evoBody = serie.keys.map((k, i) => {
+      const v = serie.values[i];
+      const prev = i > 0 ? serie.values[i - 1] : null;
+      const vp = prev == null || !prev ? '—' : (((v - prev) / Math.abs(prev)) * 100).toFixed(1) + '%';
+      return [serie.labels[i], money(v), vp];
+    });
+    doc.autoTable({
+      startY: yEvo + 3,
+      head: [['Mes', 'Total $', 'Var. %']],
+      body: evoBody,
+      theme: 'plain',
+      margin: { left: margin, right: margin },
+      headStyles: { fillColor: [232, 241, 246], textColor: [10, 36, 51], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: [10, 36, 51] },
+      alternateRowStyles: { fillColor: [247, 250, 252] },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } }
+    });
+
+    // Ranking
+    doc.addPage();
+    headerBar('Ranking Pareto 80/20 · ' + tituloSec, ctx.periodo);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${pInfo.n80} de ${ranked.length} proveedores concentran ≥80% del total (${money(total)})`, margin, 26);
+    let acum = 0;
+    const body = ranked.slice(0, 35).map((t, i) => {
+      acum += t.total;
+      const pct = total ? (t.total / total) * 100 : 0;
+      const pctAc = total ? (acum / total) * 100 : 0;
+      const unidad = t.unidades ? [...t.unidades].join(', ') : (t.unidad || '—');
+      const ticket = t.docs ? t.total / t.docs : t.total;
+      return [
+        String(i + 1), t.nombre,
+        isComp ? unidad : (t.tipos ? [...t.tipos].join(', ') : '—'),
+        money(t.total), pct.toFixed(1) + '%', pctAc.toFixed(1) + '%',
+        String(t.docs || '—'), money(ticket), i < pInfo.n80 ? 'Sí' : 'No'
+      ];
+    });
+    doc.autoTable({
+      startY: 30,
+      head: [['#', 'Proveedor / Transporte', isComp ? 'Unidad' : 'Tipo', 'Importe', '%', '% acum.', 'Docs', 'Ticket', 'Núcleo']],
+      body,
+      theme: 'plain',
+      margin: { left: margin, right: margin },
+      headStyles: { fillColor: [10, 36, 51], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 7.5, textColor: [10, 36, 51] },
+      alternateRowStyles: { fillColor: [247, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 8 }, 1: { cellWidth: 55, fontStyle: 'bold' },
+        3: {halign: 'right' }, 4: {halign: 'right' }, 5: {halign: 'right' },
+        6: {halign: 'right' }, 7: {halign: 'right' }, 8: {halign: 'center' }
+      },
+      didParseCell(data) {
+        if (data.section === 'body' && data.column.index === 8 && data.cell.raw === 'Sí') {
+          data.cell.styles.textColor = [22, 163, 74];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    // Gráficos embebidos (todos los de la pestaña activa)
+    // Asegurar render fresco
+    if (isComp) actualizarComp(); else actualizarCortes();
+    await new Promise(r => setTimeout(r, 220));
+
+    const chartIds = isComp
+      ? [
+          { id: 'chartCompEvo', title: 'Evolución mensual $' },
+          { id: 'chartCompVar', title: 'Variación % mes a mes' },
+          { id: 'chartCompPareto', title: 'Pareto 80/20' },
+          { id: 'chartCompTrend', title: 'Tendencia (MM 3 meses)' },
+          { id: 'chartCompTop', title: 'Top transportes' },
+          { id: 'chartCompUnidades', title: 'SUPERMAT vs GEOMACO' },
+          { id: 'chartCompTicket', title: 'Ticket medio' }
+        ]
+      : [
+          { id: 'chartCortesEvo', title: 'Evolución cortes $' },
+          { id: 'chartCortesMix', title: 'Composición por tipo' },
+          { id: 'chartCortesPareto', title: 'Pareto 80/20 cortes' },
+          { id: 'chartCortesVar', title: 'Variación %' },
+          { id: 'chartCortesTrend', title: 'Tendencia' }
+        ];
+
+    let pageCharts = [];
+    for (const ch of chartIds) {
+      const url = chartToPng(ch.id, 2);
+      if (url && url.length > 100) pageCharts.push({ ...ch, url });
+    }
+    // 2 gráficos por página
+    for (let i = 0; i < pageCharts.length; i += 2) {
+      doc.addPage();
+      headerBar('Visualización · ' + tituloSec, ctx.periodo);
+      const batch = pageCharts.slice(i, i + 2);
+      batch.forEach((ch, j) => {
+        const y = j === 0 ? 26 : 112;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(23, 106, 138);
+        doc.text(ch.title, margin, y);
+        try {
+          doc.addImage(ch.url, 'PNG', margin, y + 3, pageW - margin * 2, 78);
+        } catch (e) { /* skip */ }
+      });
+    }
+
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 2; i <= totalPages; i++) {
+      doc.setPage(i);
+      footer(i, totalPages);
+    }
+    doc.save(`UNIBER_Reportes_${isComp ? 'Paqueteria' : 'Cortes'}_${ctx.f.anio}_${String(ctx.f.mesDesde).padStart(2, '0')}-${String(ctx.f.mesHasta).padStart(2, '0')}.pdf`);
+  });
+
+  // Init: una sola carga a localStorage, luego render
+  initChartTools();
+  applyChartDefaults();
+  poblarAnios();
+  initAltoContraste();
+  document.getElementById('btnContrast')?.addEventListener('click', () => {
+    const on = !document.body.classList.contains('theme-contrast');
+    setAltoContraste(on);
+  });
+  aplicarTemaSegunPestana();
+  actualizarTodo(false);
+  // Escuchar cambios de storage desde otras pestañas
+  window.addEventListener('storage', () => {
+    DataCache.invalidate();
+    actualizarTodo(true);
+  });
+})();
+  </script>
+</body>
+</html>
