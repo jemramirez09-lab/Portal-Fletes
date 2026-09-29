@@ -5011,6 +5011,27 @@ function generarGraficoLineas() {
 let _dashLazyReady = { informe: false, mapa: false };
 let _dashLazyObserver = null;
 
+function actualizarSelectExport() {
+  const sel = document.getElementById("selectExportComprobante");
+  if (!sel) return;
+  const prev = sel.value;
+  const lista = ordenarLista([...(comprobantes || [])]);
+  const opts = ['<option value="">-- Comprobante --</option>'];
+  lista.forEach(c => {
+    const nItems = (c.items || []).length;
+    const tot = typeof totalItems === "function" ? totalItems(c.items) : 0;
+    const totTxt = typeof fmtMoneda === "function" ? fmtMoneda(tot) : ("$ " + Math.round(tot).toLocaleString("es-AR"));
+    const fecha = typeof fmtFecha === "function" ? fmtFecha(c.fecha) : (c.fecha || "");
+    opts.push(
+      `<option value="${String(c.id).replace(/"/g, "&quot;")}">` +
+      `N° ${escapeHtml(String(c.numero || ""))} · ${escapeHtml(fecha)} · ${nItems} PHR · ${escapeHtml(totTxt)}` +
+      `</option>`
+    );
+  });
+  sel.innerHTML = opts.join("");
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
 function actualizarTodo() {
   actualizarSelectPeriodos();
   poblarSelectsRangoMeses();
@@ -5018,7 +5039,7 @@ function actualizarTodo() {
   generarGraficoBarras();
   generarGraficoLineas();
   renderListado();
-  actualizarSelectExport();
+  try { actualizarSelectExport(); } catch (e) { console.warn("actualizarSelectExport", e); }
   actualizarDatalistTransp();
   actualizarDatalistDestinos();
   actualizarDatalistOrigenes();
@@ -5199,7 +5220,25 @@ function aplicarDashPeriodo(mode) {
 function prepararDatosExport(lista) {
   const items = [];
   (lista || []).forEach(c => {
-    (c.items || []).forEach(i => {
+    const rows = c.items || [];
+    if (!rows.length) {
+      // Comprobante sin PHR: igual aparece en el export
+      items.push({
+        transporte: "",
+        destinoViaje: "VIAJE LOCAL",
+        total: 0,
+        origen: "",
+        destino: "",
+        phr: "",
+        fechaPhr: c.fecha || "",
+        nroComprobante: c.numero || "",
+        fechaCreacion: c.fecha || "",
+        estado: c.estado || "",
+        atuFi: c.atuFi || ""
+      });
+      return;
+    }
+    rows.forEach(i => {
       items.push({
         transporte: i.transporte || "",
         destinoViaje: "VIAJE LOCAL",
@@ -5208,12 +5247,30 @@ function prepararDatosExport(lista) {
         destino: i.destino || "",
         phr: i.phr || "",
         fechaPhr: i.fechaPHR || c.fecha,
-        nroComprobante: c.numero,
-        fechaCreacion: c.fecha
+        nroComprobante: c.numero || "",
+        fechaCreacion: c.fecha || "",
+        estado: c.estado || "",
+        atuFi: c.atuFi || ""
       });
     });
   });
   return items;
+}
+
+function prepararResumenComprobantes(lista) {
+  return (lista || []).map(c => {
+    const items = c.items || [];
+    const transportistas = [...new Set(items.map(i => (i.transporte || "").trim()).filter(Boolean))];
+    return {
+      numero: c.numero || "",
+      fecha: c.fecha || "",
+      estado: c.estado || "",
+      atuFi: c.atuFi || "No",
+      cantPHR: items.length,
+      total: typeof totalItems === "function" ? totalItems(items) : items.reduce((a, i) => a + (parseFloat(i.importePHR) || 0), 0),
+      transportistas: transportistas.join(" / ")
+    };
+  });
 }
 function generarExcel(datos, cant, tarifa, cuenta) {
   const fmtAR = (n) => {
@@ -5221,8 +5278,16 @@ function generarExcel(datos, cant, tarifa, cuenta) {
     return "$ " + num.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   const cuentaFinal = (cuenta || "Flete clientes");
-  const datosOrdenados = Array.isArray(datos) ? [...datos] : [];
-  const sumaGeneral = datosOrdenados.reduce((s, d) => s + d.total, 0);
+  const datosOrdenados = (Array.isArray(datos) ? [...datos] : []).sort((a, b) => {
+    const ta = (a.transporte || "").toUpperCase();
+    const tb = (b.transporte || "").toUpperCase();
+    if (ta !== tb) return ta.localeCompare(tb, "es");
+    const na = String(a.nroComprobante || "");
+    const nb = String(b.nroComprobante || "");
+    if (na !== nb) return na.localeCompare(nb, "es", { numeric: true });
+    return String(a.phr || "").localeCompare(String(b.phr || ""), "es", { numeric: true });
+  });
+  const sumaGeneral = datosOrdenados.reduce((s, d) => s + (Number(d.total) || 0), 0);
 
   let html = `
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -5283,7 +5348,9 @@ function generarExcel(datos, cant, tarifa, cuenta) {
       <td style="text-align:center">${fmtFechaExcel(d.fechaCreacion)}</td>
     </tr>`;
   });
-  flushSubtotal();
+  // Subtotal solo si hubo más de un transportista
+  const transportistasUnicos = new Set(datosOrdenados.map(d => (d.transporte || "").trim() || "(Sin transportista)"));
+  if (transportistasUnicos.size > 1) flushSubtotal();
   html += `
     <tr class="total-row">
       <td>TOTAL GENERAL</td>
@@ -5323,9 +5390,12 @@ function modalExport(datos, titulo) {
   });
 }
 function exportar(comps, titulo) {
-  const datos = prepararDatosExport(comps);
-  if (!datos.length) return toast("Sin datos", "error");
-  modalExport(datos, titulo);
+  const lista = Array.isArray(comps) ? comps : [];
+  if (!lista.length) return toast("Sin comprobantes para exportar", "error");
+  const datos = prepararDatosExport(lista);
+  if (!datos.length) return toast("Sin datos de detalle para exportar", "error");
+  // Formato HTML con colores (cabecera naranja, grupos por transportista, total general)
+  modalExport(datos, titulo || "Exportación");
 }
 
 /* ========== PRINT ========== */

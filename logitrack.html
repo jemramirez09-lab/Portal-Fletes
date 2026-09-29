@@ -2245,6 +2245,16 @@
             filter: brightness(1.06);
             transform: translateY(-1px);
         }
+        .remitos-toolbar .btn-limpiar-carga {
+            background: linear-gradient(135deg, #EF4444, #B91C1C) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 4px 14px rgba(185, 28, 28, 0.32) !important;
+        }
+        .remitos-toolbar .btn-limpiar-carga:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+        }
 
     
         /* ─── Perfil Visualización / Consulta: solo ver + exportar ─── */
@@ -2255,6 +2265,7 @@
         body.lt-readonly #btnCancelarEdicion,
         body.lt-readonly #btnAgregarFila,
         body.lt-readonly #btnDuplicarFila,
+        body.lt-readonly #btnLimpiarCargaForm,
         body.lt-readonly #btnCargaAsistida,
         body.lt-readonly #btnAplicarTarifas,
         body.lt-readonly #btnAgregarTransferencia,
@@ -2491,6 +2502,9 @@
           </button>
           <button type="button" class="btn-accion btn-secundario" id="btnAgregarFila"><i class="fas fa-plus"></i> Agregar RTO</button>
           <button type="button" class="btn-accion btn-secundario" id="btnDuplicarFila" title="Copia el último remito"><i class="fas fa-copy"></i> Duplicar último</button>
+          <button type="button" class="btn-accion btn-limpiar-carga" id="btnLimpiarCargaForm" title="Limpia el volcado / carga manual del formulario">
+            <i class="fas fa-trash-can"></i> Limpiar carga
+          </button>
         </div>
         <div class="tabla-remitos-wrap">
         <table class="tabla-remitos-dinamica">
@@ -2966,6 +2980,8 @@
     let editandoAutorizacion = null;
     let charts = { desvProv: null, desvTransp: null, topProv: null, distribucion: null, facturadoMesA: null, comparacionMeses: null, evolucionMensual: null };
     let busquedaRto = "", busquedaAutorizacion = "", filtroDiasRapido = 0, ordenColumna = "fecha_flete", ordenDir = "desc";
+    /** Si true, se autorizó en volcado/carga que puedan existir RTOs con importe 0 y se permite guardar */
+    let rtosCeroAutorizados = false;
     let paginaActual = 1, registrosPorPagina = 10, datosFiltradosGlobal = [];
     let autoSaveInterval = null;
 
@@ -3691,8 +3707,14 @@
         if (!fechaStr) return "";
         let s = fechaStr.toString().trim();
         if (!isNaN(s) && s.length > 0 && Number(s) > 0) {
-            let fecha = new Date((Number(s) - 25569) * 86400000);
-            if (!isNaN(fecha.getTime())) return fecha.toISOString().split('T')[0];
+            // Serial Excel → fecha local (evitar corrimiento UTC)
+            const utc = new Date(Date.UTC(1899, 11, 30) + Number(s) * 86400000);
+            if (!isNaN(utc.getTime())) {
+                const y = utc.getUTCFullYear();
+                const mo = String(utc.getUTCMonth() + 1).padStart(2, "0");
+                const da = String(utc.getUTCDate()).padStart(2, "0");
+                return `${y}-${mo}-${da}`;
+            }
         }
         let partes = s.split('/');
         if (partes.length === 3 && partes[0].length <= 2) {
@@ -3705,14 +3727,28 @@
         let match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
         if (match) return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
         let d = new Date(s);
-        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+        if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const mo = String(d.getMonth() + 1).padStart(2, "0");
+            const da = String(d.getDate()).padStart(2, "0");
+            return `${y}-${mo}-${da}`;
+        }
         return "";
     }
 
-    function formatearFechaDDMMYYYY(f) { 
-        if(!f) return ""; 
-        let d=new Date(f); 
-        return isNaN(d.getTime())?f:`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; 
+    function formatearFechaDDMMYYYY(f) {
+        if (!f) return "";
+        const s = String(f).trim();
+        // YYYY-MM-DD (o con hora): usar componentes de calendario, sin UTC
+        const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) {
+            return `${m[3].padStart(2,"0")}/${m[2].padStart(2,"0")}/${m[1]}`;
+        }
+        // DD/MM/YYYY ya formateado
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) return s;
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return s;
+        return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
     }
     function formatearImporte(valor) { return "$ " + Math.round(valor).toLocaleString('es-AR'); }
 
@@ -3720,8 +3756,16 @@
         if (!fecha) return true;
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
-        const fechaObj = new Date(fecha);
+        // Parse YYYY-MM-DD as local calendar date (avoid UTC off-by-one)
+        let fechaObj;
+        const m = String(fecha).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) {
+            fechaObj = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        } else {
+            fechaObj = new Date(fecha);
+        }
         if (isNaN(fechaObj.getTime())) return true;
+        fechaObj.setHours(0,0,0,0);
         if (fechaObj > hoy) {
             mostrarToast(`La fecha de ${tipo} no puede ser futura.`, true);
             return false;
@@ -3737,8 +3781,8 @@
             if (autorizacionExcluir !== null && String(r.autorizacion) === String(autorizacionExcluir)) return false;
             const rNum = String(r.numero || "").trim();
             const rProv = String(r.proveedor || "").trim().toUpperCase();
-            // Duplicado si mismo Nº RTO + mismo proveedor (case-insensitive)
-            if (rNum === numN && rProv === provN) return true;
+            // Duplicado si mismo Nº RTO (único en todo el sistema)
+            if (rNum === numN) return true;
             // Si el proveedor está vacío en uno de los lados, también comparar solo por número
             // para evitar filtrar mal cuando el import no trae proveedor aún
             if (rNum === numN && (!provN || !rProv)) return true;
@@ -3749,13 +3793,12 @@
     /** Busca en TODA la base el RTO (número+proveedor) y devuelve la autorización donde está */
     function buscarRemitoExistenteGlobal(numero, proveedor, autorizacionExcluir = null) {
         const numN = String(numero || "").trim();
-        const provN = String(proveedor || "").trim().toUpperCase();
         if (!numN) return null;
+        // Un Nº de RTO no puede repetirse en ninguna autorización (independiente del proveedor)
         for (const r of baseFletes) {
             if (autorizacionExcluir !== null && String(r.autorizacion) === String(autorizacionExcluir)) continue;
             const rNum = String(r.numero || "").trim();
-            const rProv = String(r.proveedor || "").trim().toUpperCase();
-            if (rNum === numN && (rProv === provN || !provN || !rProv)) {
+            if (rNum === numN) {
                 return { autorizacion: r.autorizacion, proveedor: r.proveedor, numero: r.numero };
             }
         }
@@ -3902,6 +3945,10 @@
         hint.className = "tarifa-hint";
         hint.textContent = "Base: $ " + Math.round(tarifa).toLocaleString("es-AR");
         if (esInd && inputImp) {
+            // Nunca sobrescribir importes que vinieron del Excel / carga asistida
+            if (opts.preserve || inputImp.dataset.fromFile === "1") {
+                return tarifa;
+            }
             const cur = parseFloat(inputImp.value);
             const vacio = !inputImp.value || isNaN(cur) || cur === 0;
             if (opts.force || vacio || inputImp.dataset.autoTarifa === "1") {
@@ -4737,7 +4784,36 @@
         }
     }
     
+    function limpiarCargaConValidacion() {
+        if (typeof ltAuthRequireWrite === "function" && !ltAuthRequireWrite("limpiar carga del formulario")) return;
+        const filas = document.querySelectorAll("#tbodyRemitos tr");
+        let conDatos = 0;
+        filas.forEach(tr => {
+            const num = tr.querySelector(".rto_numero")?.value?.trim();
+            const prov = tr.querySelector(".rto_proveedor")?.value?.trim();
+            const imp = tr.querySelector(".rto_importe")?.value;
+            if (num || prov || (imp && parseFloat(imp) !== 0)) conDatos++;
+        });
+        const transp = document.getElementById("manu_transportista")?.value?.trim() || "";
+        const impUnico = document.getElementById("importeTotalFlete")?.value;
+        const hayAlgo = conDatos > 0 || transp || (impUnico && parseFloat(impUnico) !== 0) || editandoAutorizacion;
+        if (!hayAlgo) {
+            mostrarToast("El formulario ya está vacío", true);
+            return;
+        }
+        const msg = editandoAutorizacion
+            ? `Estás editando la autorización ${editandoAutorizacion}.\n¿Cancelar la edición y limpiar todo el formulario de carga?`
+            : `Se van a eliminar ${conDatos || filas.length} fila(s) de RTO del formulario (volcado / carga manual).\nTransportista y demás datos de cabecera también se reinician.\n\n¿Confirmar limpieza?`;
+        if (!confirm(msg)) {
+            mostrarToast("Limpieza cancelada");
+            return;
+        }
+        limpiarFormulario();
+        mostrarToast("🗑️ Formulario de carga limpiado");
+    }
+
     function limpiarFormulario() {
+        rtosCeroAutorizados = false;
         document.getElementById("manu_fecha_flete").value = fechaHoyISO();
         document.getElementById("manu_transportista").value = obtenerUltimoTransportista();
         document.getElementById("importeTotalFlete").value = "";
@@ -4782,6 +4858,10 @@
         }
 
         let ff = document.getElementById("manu_fecha_flete").value;
+        if (!ff) {
+            ff = fechaHoyISO();
+            document.getElementById("manu_fecha_flete").value = ff;
+        }
         if (ff && !validarFecha(ff, "autorización")) return false;
         let transp = document.getElementById("manu_transportista").value.trim();
         if(!transp) { mostrarToast("Transportista obligatorio", true); return false; }
@@ -4823,21 +4903,33 @@
             let adicional = normalizarNumero(row.querySelector(".rto_adicional").value);
             let concepto = row.querySelector(".rto_concepto").value.trim();
             let frto = row.querySelector(".rto_fecha").value;
+            if (!frto) frto = ff;
             if (frto && !validarFecha(frto, "RTO")) { erroresDetallados.push(`Remito ${num}: fecha RTO inválida`); continue; }
-            if (ff && frto && new Date(frto) > new Date(ff)) {
+            if (ff && frto && frto > ff) {
                 erroresDetallados.push(`Remito ${num}: la fecha RTO (${frto}) no puede ser posterior a la fecha de autorización (${ff})`);
                 continue;
             }
-            let periodo = ff ? ff.substring(0,7) : new Date().toISOString().substring(0,7);
+            let periodo = ff ? ff.substring(0,7) : fechaHoyISO().substring(0,7);
             let tarifaBase = obtenerTarifaBaseParaRemito(tipoServicio, origen, destino, 0, "");
-            if(tarifaBase === null && tipoServicio === "abastecimiento") {
-                erroresDetallados.push(`Remito ${num}: no hay tarifa para ruta ${origen} → ${destino}. Use opción "+ Nuevo"`);
-                continue;
-            }
+            // Sin tarifa en tarifario: no bloquea el guardado (volcado ni carga manual). Base = 0.
+            if (tarifaBase === null) tarifaBase = 0;
             let importeReal = 0;
             if(tipoFleteGlobal === "individual") {
-                importeReal = normalizarNumero(row.querySelector(".rto_importe").value);
-                if(importeReal === null || importeReal < 0) { erroresDetallados.push(`Remito ${num}: importe requerido (>=0)`); continue; }
+                const inpImp = row.querySelector(".rto_importe");
+                importeReal = normalizarNumero(inpImp?.value);
+                if(importeReal === null || importeReal < 0) {
+                    erroresDetallados.push(`Remito ${num}: importe inválido`);
+                    continue;
+                }
+                // Importe 0: permitido si autorizado en volcado/archivo, o carga manual (se confirma una vez abajo)
+                if (importeReal === 0) {
+                    const okCero = rtosCeroAutorizados || (inpImp && inpImp.dataset.fromFile === "1");
+                    if (!okCero) {
+                        // marcar para confirmación única al final (carga manual)
+                        if (!window._cerosPendientesConfirm) window._cerosPendientesConfirm = [];
+                        window._cerosPendientesConfirm.push(num);
+                    }
+                }
             }
             sumaTarifasBase += tarifaBase || 0;
             nuevosRemitos.push({
@@ -4850,6 +4942,21 @@
                 importe_auth: (tipoFleteGlobal === "unico") ? (importeTotalUnico || 0) : (importeReal || 0)
             });
         }
+        // Confirmación única de importes $0 en carga manual
+        const cerosPend = window._cerosPendientesConfirm || [];
+        window._cerosPendientesConfirm = [];
+        if (cerosPend.length && !rtosCeroAutorizados) {
+            const lista = cerosPend.slice(0, 10).join(", ") + (cerosPend.length > 10 ? "…" : "");
+            const ok = confirm(
+                `Hay ${cerosPend.length} RTO(s) con importe $0:\n${lista}\n\n¿Confirmar que es correcto y guardar de todos modos?`
+            );
+            if (!ok) {
+                mostrarToast("Guardado cancelado: revisá los importes en $0", true);
+                return false;
+            }
+            rtosCeroAutorizados = true;
+        }
+
         if (erroresDetallados.length > 0) {
             mostrarToast(`Errores: ${erroresDetallados.join(", ")}`, true);
             return false;
@@ -5128,7 +5235,7 @@
                     if (!auth || !num) { omitidasPorFaltantes++; continue; }
                     let importe = normalizarNumero(importeRaw);
                     let fechaRTO = normalizarFecha(frtoRaw);
-                    if (!fechaRTO) fechaRTO = new Date().toISOString().split('T')[0];
+                    if (!fechaRTO) fechaRTO = fechaHoyISO();
                     
                     let tarifaBase = obtenerTarifaBaseParaRemito(tipoServ, origen, destino, 0, "");
                     nuevos.push({
@@ -5748,7 +5855,12 @@
         );
         if(filtroDiasRapido > 0) {
             let limite = new Date(); limite.setDate(limite.getDate() - filtroDiasRapido);
-            filtrados = filtrados.filter(i => new Date(i.fecha_flete) >= limite);
+            filtrados = filtrados.filter(i => {
+                const fs = String(i.fecha_flete || "");
+                const mm = fs.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+                const di = mm ? new Date(Number(mm[1]), Number(mm[2]) - 1, Number(mm[3])) : new Date(fs);
+                return !isNaN(di.getTime()) && di >= limite;
+            });
         }
         filtrados.sort((a,b) => {
             let va = a[ordenColumna] || "", vb = b[ordenColumna] || "";
@@ -6332,18 +6444,14 @@
             const num = String(r.numero || "").trim();
             const prov = String(r.proveedor || "").trim();
             if (!num) errs.push("Sin Nº RTO");
-            // Duplicado dentro del propio archivo/popup (mismo Nº, con o sin proveedor)
+            // Duplicado dentro del propio archivo/popup: mismo Nº RTO (independiente del proveedor)
             const dupIdx = this.datos.findIndex((x, i) => {
                 if (i === idx) return false;
                 const xn = String(x.numero || "").trim();
-                if (!xn || xn !== num) return false;
-                const xp = String(x.proveedor || "").trim().toUpperCase();
-                const rp = prov.toUpperCase();
-                // Mismo número + mismo proveedor, o mismo número si alguno no tiene proveedor
-                return (xp === rp) || !xp || !rp;
+                return xn && xn === num;
             });
             if (dupIdx !== -1) errs.push("Nº RTO duplicado en el archivo");
-            // Control contra TODOS los existentes en la base
+            // Control contra TODOS los existentes en la base (mismo Nº RTO)
             if (num) {
                 const hit = buscarRemitoExistenteGlobal(num, prov);
                 if (hit) {
@@ -6465,32 +6573,119 @@
 
         // ---------- Volcar al formulario ----------
         volcarAlFormulario() {
-            if (!ltAuthRequireWrite('cargar RTOs desde Excel')) return;
+            if (typeof ltAuthRequireWrite === "function" && !ltAuthRequireWrite("cargar RTOs desde Excel")) return;
             const unidad = document.getElementById("ca_unidad")?.value || "SPERMAT S.A.S - SAMI";
             const authAuto = document.getElementById("ca_autorizacion")?.value.trim() || "";
-            const transpPopup = document.getElementById("ca_transportista")?.value.trim() || "";
+            let transpPopup = (document.getElementById("ca_transportista")?.value || "").trim();
+            if (!transpPopup) {
+                transpPopup = (document.getElementById("manu_transportista")?.value || "").trim();
+            }
+            if (!transpPopup) {
+                try { transpPopup = obtenerUltimoTransportista() || ""; } catch (e) { transpPopup = ""; }
+            }
             if (!this.datos.length) {
                 mostrarToast("No hay filas para volcar", true);
                 return;
             }
 
-            // Validación completa contra archivo + base existente
-            const errores = [];
+            // Separar filas válidas / vacías / errores internos / duplicados en base
+            const filasOk = [];
+            const erroresDuros = [];
+            const dupsBase = [];
+            const vistosEnArchivo = new Map(); // num -> idx
+
             this.datos.forEach((r, i) => {
-                const errs = this.validarFila(r, i);
-                if (errs.length) errores.push(`Fila #${i + 1}: ${errs.join(", ")}`);
+                const num = String(r.numero || "").trim();
+                if (!num) return; // fila vacía: se omite en silencio
+                const prov = String(r.proveedor || "").trim();
+
+                // Duplicado dentro del archivo
+                if (vistosEnArchivo.has(num)) {
+                    erroresDuros.push(`Fila #${i + 1}: Nº RTO ${num} duplicado en el archivo (también en fila #${vistosEnArchivo.get(num) + 1})`);
+                    return;
+                }
+                vistosEnArchivo.set(num, i);
+
+                // Duplicado en base existente
+                const hit = (typeof buscarRemitoExistenteGlobal === "function")
+                    ? buscarRemitoExistenteGlobal(num, prov)
+                    : null;
+                if (hit) {
+                    dupsBase.push({ i: i + 1, num, prov: prov || "—", auth: hit.autorizacion });
+                    return;
+                }
+                filasOk.push(r);
             });
-            if (errores.length) {
-                mostrarToast("Errores de duplicidad/validación: " + errores.slice(0, 4).join(" | ") + (errores.length > 4 ? ` (+${errores.length - 4} más)` : ""), true);
+
+            if (erroresDuros.length) {
+                mostrarToast("Errores en el archivo: " + erroresDuros.slice(0, 4).join(" | ") + (erroresDuros.length > 4 ? ` (+${erroresDuros.length - 4} más)` : ""), true);
                 return;
             }
 
-            // Agrupar por transportista de cada fila (prioridad: fila > popup)
+            if (dupsBase.length) {
+                const lista = dupsBase.slice(0, 10).map(d => `  · RTO ${d.num} → ya en auth ${d.auth}`).join("\n");
+                const extra = dupsBase.length > 10 ? `\n  … y ${dupsBase.length - 10} más` : "";
+                if (!filasOk.length) {
+                    alert(
+                        `No se puede volcar: los ${dupsBase.length} RTO(s) ya están registrados.\n\n` +
+                        lista + extra +
+                        `\n\nQuitá esos números del archivo o usá la edición de la autorización existente.`
+                    );
+                    return;
+                }
+                const okOmitir = confirm(
+                    `${dupsBase.length} RTO(s) ya existen en la base y se omitirán:\n\n` +
+                    lista + extra +
+                    `\n\nQuedan ${filasOk.length} RTO(s) nuevos para volcar.\n¿Continuar omitiendo los duplicados?`
+                );
+                if (!okOmitir) {
+                    mostrarToast("Volcado cancelado", true);
+                    return;
+                }
+            }
+
+            if (!filasOk.length) {
+                mostrarToast("No quedan filas nuevas para volcar", true);
+                return;
+            }
+
+            // Trabajar solo con filas válidas a partir de acá
+            const datosOriginales = this.datos;
+            this.datos = filasOk;
+
+            // Confirmar RTOs con importe 0 antes de volcar
+            const filasCero = [];
+            this.datos.forEach((r, i) => {
+                const imp = Number(r.importe) || 0;
+                const ad = Number(r.adicional) || 0;
+                if (imp === 0 && ad === 0) {
+                    filasCero.push({ i: i + 1, num: String(r.numero || "").trim() || "(sin nº)", prov: String(r.proveedor || "").trim() || "—" });
+                }
+            });
+            let autorizarCeros = false;
+            if (filasCero.length) {
+                const lista = filasCero.slice(0, 12).map(f => `  · Fila ${f.i}: RTO ${f.num} · ${f.prov}`).join("\n");
+                const extra = filasCero.length > 12 ? `\n  … y ${filasCero.length - 12} más` : "";
+                const okCero = confirm(
+                    `Hay ${filasCero.length} RTO(s) con importe $0:\n\n` +
+                    lista + extra +
+                    `\n\n¿Es correcto dejarlos en $0 y continuar el volcado?\n` +
+                    `(Si confirmás, luego se permitirá guardar con importe cero.)`
+                );
+                if (!okCero) {
+                    this.datos = datosOriginales;
+                    mostrarToast("Volcado cancelado: revisá los importes en $0", true);
+                    return;
+                }
+                autorizarCeros = true;
+            }
+
+            // Agrupar por transportista de cada fila (prioridad: fila > popup > formulario)
             const gruposMap = new Map();
             const sinTransp = [];
             this.datos.forEach((r, i) => {
                 let t = String(r._transportistaFila || "").trim().toUpperCase();
-                if (!t) t = transpPopup.trim().toUpperCase();
+                if (!t) t = String(transpPopup || "").trim().toUpperCase();
                 if (!t) {
                     sinTransp.push(i + 1);
                     return;
@@ -6499,7 +6694,10 @@
                 gruposMap.get(t).push(r);
             });
             if (sinTransp.length) {
-                mostrarToast(`Filas sin transportista: #${sinTransp.slice(0, 8).join(", ")}${sinTransp.length > 8 ? "…" : ""}. Completá el transportista en el popup o en el archivo.`, true);
+                this.datos = datosOriginales;
+                mostrarToast(`Falta transportista. Completalo en el popup (campo Transportista) o en el formulario principal.`, true);
+                const caT = document.getElementById("ca_transportista");
+                if (caT) caT.focus();
                 return;
             }
 
@@ -6520,6 +6718,7 @@
                     `\n\nSe crearán ${grupos.length} autorizaciones sucesivas (una por transportista, con su sumatoria de importes).\n¿Continuar?`
                 );
                 if (!ok) return;
+                if (autorizarCeros) rtosCeroAutorizados = true;
                 const resultado = this._guardarGruposPorTransportista(grupos, unidad, authAuto);
                 if (resultado && resultado.creadas && resultado.creadas.length) {
                     this.cerrarPopup();
@@ -6552,10 +6751,10 @@
                     authInput.value = authAuto;
                     authInput.readOnly = true;
                 }
-                // Flete individual si hay importes por fila
+                // Flete individual si hay importes por fila O si hay ceros autorizados del archivo
                 const hayImportes = this.datos.some(r => (Number(r.importe) || 0) > 0);
                 const tipoEl = document.getElementById("tipoFlete");
-                if (tipoEl && hayImportes) {
+                if (tipoEl && (hayImportes || autorizarCeros)) {
                     tipoEl.value = "individual";
                     if (typeof ajustarColumnasPorTipoFlete === "function") ajustarColumnasPorTipoFlete();
                 }
@@ -6573,13 +6772,33 @@
                         r.punto_venta || ""
                     );
                 });
+                // Marcar importes del archivo para que no los pise el tarifario
+                document.querySelectorAll("#tbodyRemitos tr").forEach((tr, idx) => {
+                    const imp = tr.querySelector(".rto_importe");
+                    if (!imp) return;
+                    const fromFile = Number(this.datos[idx]?.importe) || 0;
+                    if (fromFile > 0 || (this.datos[idx] && Object.prototype.hasOwnProperty.call(this.datos[idx], "importe"))) {
+                        imp.value = fromFile;
+                        imp.dataset.fromFile = "1";
+                        delete imp.dataset.autoTarifa;
+                    }
+                    const ad = tr.querySelector(".rto_adicional");
+                    if (ad && this.datos[idx]) {
+                        ad.value = Number(this.datos[idx].adicional) || 0;
+                    }
+                });
                 asignarValidadoresARemitos();
                 setTimeout(() => {
-                    aplicarTarifasATodos(false);
+                    // Solo mostrar base del tarifario; NO sobrescribir importes del Excel
+                    document.querySelectorAll("#tbodyRemitos tr").forEach(row => {
+                        aplicarTarifaEnFila(row, { force: false, preserve: true });
+                    });
                     actualizarResumenCarga();
+                    if (typeof actualizarSumaIndividual === "function") actualizarSumaIndividual();
                 }, 100);
+                if (autorizarCeros) rtosCeroAutorizados = true;
                 this.cerrarPopup();
-                mostrarToast(`✅ ${this.datos.length} RTO(s) volcados al formulario (${transp}). Revisá y guardá.`);
+                mostrarToast(`✅ ${this.datos.length} RTO(s) volcados al formulario (${transp}).` + (autorizarCeros ? " Importes $0 autorizados." : "") + " Revisá y guardá.");
                 setTimeout(() => {
                     const first = document.querySelector("#tbodyRemitos tr .rto_numero");
                     if (first) first.focus();
@@ -6632,8 +6851,11 @@
                 siguiente = obtenerSiguienteNumeroDisponible();
             }
 
-            const fechaHoy = new Date().toISOString().split("T")[0];
+            const fechaHoy = (typeof fechaHoyISO === "function") ? fechaHoyISO() : new Date().toISOString().split("T")[0];
             const fechaForm = (document.getElementById("manu_fecha_flete")?.value) || fechaHoy;
+            if (document.getElementById("manu_fecha_flete") && !document.getElementById("manu_fecha_flete").value) {
+                document.getElementById("manu_fecha_flete").value = fechaForm;
+            }
 
             for (const [transp, filas] of grupos) {
                 // Asegurar número libre (salta los ocupados en LogiTrack y Fletes PRO)
@@ -7147,6 +7369,7 @@
         document.getElementById("btnCargaAsistida")?.addEventListener("click", () => CargaAsistida.abrirModalEleccion());
         document.getElementById("btnDescargarPlantillaRTOS")?.addEventListener("click", () => CargaAsistida.descargarPlantilla());
         document.getElementById("btnExportarRTOSCargados")?.addEventListener("click", () => CargaAsistida.exportarCargados());
+        document.getElementById("btnLimpiarCargaForm")?.addEventListener("click", () => limpiarCargaConValidacion());
 
         document.getElementById("btnAgregarFila").onclick = function() {
             const rows = document.querySelectorAll("#tbodyRemitos tr");
