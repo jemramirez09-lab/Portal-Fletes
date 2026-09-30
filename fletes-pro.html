@@ -5278,15 +5278,9 @@ function generarExcel(datos, cant, tarifa, cuenta) {
     return "$ " + num.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   const cuentaFinal = (cuenta || "Flete clientes");
-  const datosOrdenados = (Array.isArray(datos) ? [...datos] : []).sort((a, b) => {
-    const ta = (a.transporte || "").toUpperCase();
-    const tb = (b.transporte || "").toUpperCase();
-    if (ta !== tb) return ta.localeCompare(tb, "es");
-    const na = String(a.nroComprobante || "");
-    const nb = String(b.nroComprobante || "");
-    if (na !== nb) return na.localeCompare(nb, "es", { numeric: true });
-    return String(a.phr || "").localeCompare(String(b.phr || ""), "es", { numeric: true });
-  });
+  // Respetar el orden de ingreso de los PHR (tal como están en cada comprobante).
+  // No reordenar por transportista ni por N° PHR.
+  const datosOrdenados = Array.isArray(datos) ? [...datos] : [];
   const sumaGeneral = datosOrdenados.reduce((s, d) => s + (Number(d.total) || 0), 0);
 
   let html = `
@@ -5312,12 +5306,13 @@ function generarExcel(datos, cant, tarifa, cuenta) {
   </tr></thead>
   <tbody>`;
 
-  let transportistaActual = null, subtotal = 0, cantidadGrupo = 0;
+  // Separadores por comprobante (sin reordenar PHR). Subtotal al cambiar de N° comprobante.
+  let comprobanteActual = null, subtotal = 0, cantidadGrupo = 0;
   const flushSubtotal = () => {
-    if (transportistaActual === null) return;
+    if (comprobanteActual === null) return;
     html += `
     <tr class="subtotal-row">
-      <td>Subtotal ${escapeHtml(transportistaActual)}</td>
+      <td>Subtotal N° ${escapeHtml(String(comprobanteActual))}</td>
       <td style="text-align:center">${cantidadGrupo}</td>
       <td></td><td></td><td class="num">${fmtAR(subtotal)}</td>
       <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -5326,15 +5321,16 @@ function generarExcel(datos, cant, tarifa, cuenta) {
 
   datosOrdenados.forEach(d => {
     const transp = (d.transporte || "").trim() || "(Sin transportista)";
-    if (transportistaActual !== null && transp !== transportistaActual) {
+    const nro = String(d.nroComprobante || "").trim() || "(sin N°)";
+    if (comprobanteActual !== null && nro !== comprobanteActual) {
       flushSubtotal();
-      html += `<tr class="sep-row"><td colspan="12">🚛 ${escapeHtml(transp)}</td></tr>`;
+      html += `<tr class="sep-row"><td colspan="12">📄 Comprobante N° ${escapeHtml(nro)}</td></tr>`;
       subtotal = 0; cantidadGrupo = 0;
-    } else if (transportistaActual === null) {
-      html += `<tr class="sep-row"><td colspan="12">🚛 ${escapeHtml(transp)}</td></tr>`;
+    } else if (comprobanteActual === null) {
+      html += `<tr class="sep-row"><td colspan="12">📄 Comprobante N° ${escapeHtml(nro)}</td></tr>`;
     }
-    transportistaActual = transp;
-    subtotal += d.total;
+    comprobanteActual = nro;
+    subtotal += Number(d.total) || 0;
     cantidadGrupo += 1;
     html += `
     <tr>
@@ -5348,9 +5344,9 @@ function generarExcel(datos, cant, tarifa, cuenta) {
       <td style="text-align:center">${fmtFechaExcel(d.fechaCreacion)}</td>
     </tr>`;
   });
-  // Subtotal solo si hubo más de un transportista
-  const transportistasUnicos = new Set(datosOrdenados.map(d => (d.transporte || "").trim() || "(Sin transportista)"));
-  if (transportistasUnicos.size > 1) flushSubtotal();
+  // Subtotal del último comprobante solo si hay más de uno
+  const comprobantesUnicos = new Set(datosOrdenados.map(d => String(d.nroComprobante || "").trim() || "(sin N°)"));
+  if (comprobantesUnicos.size > 1) flushSubtotal();
   html += `
     <tr class="total-row">
       <td>TOTAL GENERAL</td>
@@ -5371,7 +5367,7 @@ function generarExcel(datos, cant, tarifa, cuenta) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  toast("Excel exportado (separado por transportista)", "success");
+  toast("Excel exportado (orden de ingreso de PHR)", "success");
 }
 function modalExport(datos, titulo) {
   showModal({
