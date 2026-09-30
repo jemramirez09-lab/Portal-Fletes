@@ -1244,6 +1244,30 @@
         <button id="btnBuscarPhr"><i class="fas fa-search"></i> Buscar</button>
       </div>
       <div id="resultadoBusquedaPhr"></div>
+
+      <div style="margin-top:22px;padding-top:16px;border-top:1.5px solid var(--border)">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0;font-size:1rem"><i class="fas fa-clone" style="color:var(--warning)"></i> Gestionar duplicados PHR</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <label class="switch-row" style="margin:0;font-size:.82rem">
+              <input type="checkbox" id="dupSoloMismoTransporte" checked>
+              Solo mismo transportista
+            </label>
+            <button type="button" id="btnAnalizarDuplicadosPhr" class="btn-sm">
+              <i class="fas fa-search-plus"></i> Analizar duplicados
+            </button>
+          </div>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">
+          Detecta el mismo Nº PHR repetido dentro de un comprobante o en distintos comprobantes. Podés abrir el comprobante para corregir.
+        </p>
+        <div id="resumenDuplicadosPhr" class="resumen-cards" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:0;margin-bottom:12px;display:none">
+          <div class="r-card r-base"><div class="r-label"><i class="fas fa-hashtag"></i> PHR únicos</div><div class="r-value" id="dupStatUnicos">0</div></div>
+          <div class="r-card r-adic"><div class="r-label"><i class="fas fa-exclamation-triangle"></i> Con duplicado</div><div class="r-value" id="dupStatDup">0</div></div>
+          <div class="r-card r-estado has-warn"><div class="r-label"><i class="fas fa-list"></i> Ocurrencias extra</div><div class="r-value" id="dupStatExtra">0</div></div>
+        </div>
+        <div id="resultadoDuplicadosPhr"></div>
+      </div>
     </div>
 
     <!-- TARIFARIO UNIMAX -->
@@ -3801,6 +3825,56 @@ function validarItem(item) {
   if (item.phr && String(item.phr).trim().length < 2) err.push("PHR muy corto");
   return err;
 }
+
+/** Inserta un PHR vacío justo debajo del índice dado (al modificar comprobante ya guardado). */
+function insertarPhrDespues(idx) {
+  if (typeof fpAuthRequireWrite === "function" && !fpAuthRequireWrite("agregar PHR")) return;
+  const i = Number(idx);
+  if (!Number.isFinite(i) || i < 0 || i >= (itemsTemp || []).length) {
+    toast("Índice de PHR inválido", "error");
+    return;
+  }
+  const ref = itemsTemp[i] || {};
+  const dens = typeof getDensidadDefault === "function" ? getDensidadDefault() : 0;
+  const globalT = (document.getElementById("transportistaGlobal")?.value || "").trim();
+  const fechaDefault = document.getElementById("floteFecha")?.value || new Date().toISOString().slice(0, 10);
+  const nuevo = {
+    fechaPHR: ref.fechaPHR || fechaDefault,
+    phr: "",
+    transporte: (ref.transporte || "").trim() || globalT,
+    origen: ref.origen || (typeof ORIGEN_UNIMAX_SMT !== "undefined" ? ORIGEN_UNIMAX_SMT : ""),
+    origenLat: ref.origenLat != null ? ref.origenLat : (typeof ORIGEN_UNIMAX_COORDS !== "undefined" ? ORIGEN_UNIMAX_COORDS.lat : null),
+    origenLng: ref.origenLng != null ? ref.origenLng : (typeof ORIGEN_UNIMAX_COORDS !== "undefined" ? ORIGEN_UNIMAX_COORDS.lng : null),
+    origenPlaceId: ref.origenPlaceId || "local:unimax-smt-lavalle-4001",
+    destino: "",
+    importePHR: 0,
+    kg: 0,
+    toneladas: 0,
+    m3: 0,
+    m3Manual: false,
+    densidad: dens,
+    tieneAdicional: false,
+    tipoAdicional: "manual",
+    importeAdicional: 0,
+    _tarifaBase: null,
+    remitos: []
+  };
+  itemsTemp.splice(i + 1, 0, nuevo);
+  if (typeof ultimoPhrNuevoIdx !== "undefined") ultimoPhrNuevoIdx = i + 1;
+  renderItemsTemp();
+  if (typeof AutoSaveService !== "undefined") AutoSaveService.schedule();
+  setTimeout(() => {
+    const cont = document.getElementById("itemsPhrContainer");
+    const el = cont?.querySelector(`[data-phr-idx="${i + 1}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focus = el.querySelector('input[data-f="phr"]');
+      if (focus) focus.focus();
+    }
+  }, 80);
+  toast("PHR agregado debajo (#" + (i + 2) + ")", "success");
+}
+
 function renderItemsTemp() {
   const cont = document.getElementById("itemsPhrContainer");
   if (!itemsTemp.length) {
@@ -3835,7 +3909,14 @@ function renderItemsTemp() {
           <label>m³ ${item.m3Manual ? '<span style="color:var(--warning);font-weight:600">(manual)</span>' : '<span style="color:var(--muted);font-weight:500">(auto)</span>'}</label>
           <input type="number" step="0.001" min="0" data-i="${idx}" data-f="m3" value="${item.m3 ?? 0}" style="width:100px" placeholder="0">
         </div>
-        <div class="field" style="align-self:flex-end"><button class="btn-sm btn-danger" data-del="${idx}"><i class="fas fa-trash"></i></button></div>
+        <div class="field" style="align-self:flex-end;display:flex;gap:4px;flex-wrap:wrap">
+          <button type="button" class="btn-sm" data-insert-after="${idx}" title="Agregar PHR a continuación (debajo)" style="background:#0d9488;color:#fff" aria-label="Agregar PHR debajo">
+            <i class="fas fa-plus"></i> Agregar
+          </button>
+          <button type="button" class="btn-sm btn-danger" data-del="${idx}" title="Eliminar PHR" aria-label="Eliminar PHR">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
       <div class="phr-grid" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
         <div class="field" style="min-width:170px">
@@ -4024,6 +4105,13 @@ function renderItemsTemp() {
       toast("PHR eliminado", "info");
     };
   });
+  cont.querySelectorAll("[data-insert-after]").forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      insertarPhrDespues(+btn.dataset.insertAfter);
+    };
+  });
   cont.querySelectorAll("input[data-ac]").forEach(inp => attachAutocomplete(inp, inp.dataset.ac));
   cont.querySelectorAll('input[data-ac="origen"], input[data-ac="destino"]').forEach(inp => {
     MapsService.attachPlaces(inp);
@@ -4161,10 +4249,14 @@ function guardarComprobante() {
     }
   }
   if (existeEnLogiTrack(numero) && !comprobanteEditandoId) return toast(`"${numero}" existe en LogiTrack`, "error");
-  for (let i = 0; i < itemsTemp.length; i++)
-    for (let j = i + 1; j < itemsTemp.length; j++)
-      if (itemsTemp[i].phr && itemsTemp[i].phr === itemsTemp[j].phr && itemsTemp[i].transporte === itemsTemp[j].transporte)
-        return toast("PHR duplicados con mismo transportista", "error");
+  const dupInfo = typeof advertirDuplicadosAntesDeGuardar === "function"
+    ? advertirDuplicadosAntesDeGuardar()
+    : { bloquea: false };
+  if (dupInfo.bloquea) {
+    toast(dupInfo.mensaje || "PHR duplicados con mismo transportista", "error");
+    renderItemsTemp();
+    return;
+  }
 
   const run = async () => {
     try {
@@ -4180,9 +4272,21 @@ function guardarComprobante() {
     }
     ejecutarGuardado(numero, fecha);
   };
-  if (itemsTemp.some(i => i.importePHR === 0)) {
-    showModal({ title: "Importes $0", body: "Algunos PHR tienen $0. ¿Continuar?", confirmText: "Sí, guardar", onConfirm: () => { run(); } });
-  } else run();
+  const continuarConCerosODup = () => {
+    if (itemsTemp.some(i => i.importePHR === 0)) {
+      showModal({ title: "Importes $0", body: "Algunos PHR tienen $0. ¿Continuar?", confirmText: "Sí, guardar", onConfirm: () => { run(); } });
+    } else run();
+  };
+  if (dupInfo.advertencia) {
+    showModal({
+      title: "PHR duplicados detectados",
+      body: dupInfo.mensaje,
+      confirmText: "Guardar igual",
+      onConfirm: () => continuarConCerosODup()
+    });
+  } else {
+    continuarConCerosODup();
+  }
 }
 function armarComp(id, numero, fecha, atuFi) {
   const fechaISO = toISODate(fecha);
@@ -5334,7 +5438,7 @@ function generarExcel(datos, cant, tarifa, cuenta) {
     cantidadGrupo += 1;
     html += `
     <tr>
-      <td>${escapeHtml(transp)}</td><td style="text-align:center">1</td><td>VIAJE LOCAL</td>
+      <td style="font-weight:700;color:#1B4F8A">🚛 ${escapeHtml(transp)}</td><td style="text-align:center">1</td><td>VIAJE LOCAL</td>
       <td class="num">${fmtAR(d.total)}</td><td class="num">${fmtAR(d.total)}</td>
       <td>${escapeHtml(d.origen)}</td><td>${escapeHtml(d.destino)}</td>
       <td style="text-align:center">${escapeHtml(d.phr)}</td>
@@ -5613,6 +5717,150 @@ document.getElementById("btnCargarPorNumero").onclick = () => {
   if (!comp) return toast("No existe", "error");
   editarComprobante(comp.id);
 };
+
+/* ========== DUPLICADOS PHR ========== */
+function normalizarPhrKey(phr) {
+  return String(phr || "").trim().toUpperCase();
+}
+function normalizarTransporteKey(t) {
+  return String(t || "").trim().toUpperCase();
+}
+function recolectarOcurrenciasPhr(opts) {
+  const soloMismoTransp = !!(opts && opts.soloMismoTransporte);
+  const map = new Map();
+  (comprobantes || []).forEach(c => {
+    (c.items || []).forEach((it, itemIdx) => {
+      const phr = normalizarPhrKey(it.phr);
+      if (!phr) return;
+      const transp = normalizarTransporteKey(it.transporte);
+      const key = soloMismoTransp ? `${phr}||${transp}` : phr;
+      if (!map.has(key)) {
+        map.set(key, { phr, transporte: soloMismoTransp ? (it.transporte || "") : null, occ: [] });
+      }
+      map.get(key).occ.push({
+        compId: c.id, numero: c.numero || "", fecha: c.fecha || "", estado: c.estado || "",
+        itemIdx, transporte: it.transporte || "", origen: it.origen || "", destino: it.destino || "",
+        importe: parseFloat(it.importePHR) || 0, fechaPHR: it.fechaPHR || c.fecha || "", phrRaw: it.phr || ""
+      });
+    });
+  });
+  return map;
+}
+function encontrarDuplicadosPhr(opts) {
+  const map = recolectarOcurrenciasPhr(opts);
+  const dups = [];
+  let totalUnicos = 0, totalExtra = 0;
+  map.forEach(entry => {
+    totalUnicos += 1;
+    if (entry.occ.length > 1) { dups.push(entry); totalExtra += entry.occ.length - 1; }
+  });
+  dups.sort((a, b) => b.occ.length - a.occ.length || a.phr.localeCompare(b.phr));
+  return { dups, totalUnicos, totalExtra, totalConDup: dups.length };
+}
+function renderDuplicadosPhr() {
+  const resDiv = document.getElementById("resultadoDuplicadosPhr");
+  const resumen = document.getElementById("resumenDuplicadosPhr");
+  if (!resDiv) return;
+  const solo = document.getElementById("dupSoloMismoTransporte")?.checked !== false;
+  const { dups, totalUnicos, totalExtra, totalConDup } = encontrarDuplicadosPhr({ soloMismoTransporte: solo });
+  if (resumen) {
+    resumen.style.display = "grid";
+    const u = document.getElementById("dupStatUnicos");
+    const d = document.getElementById("dupStatDup");
+    const e = document.getElementById("dupStatExtra");
+    if (u) u.textContent = String(totalUnicos);
+    if (d) d.textContent = String(totalConDup);
+    if (e) e.textContent = String(totalExtra);
+  }
+  if (!dups.length) {
+    resDiv.innerHTML = `<div class="empty-state" style="padding:24px"><i class="fas fa-check-circle" style="color:var(--success)"></i><p>No se encontraron PHR duplicados${solo ? " (mismo transportista)" : ""}.</p></div>`;
+    return;
+  }
+  resDiv.innerHTML = dups.map(entry => {
+    const titulo = solo
+      ? `${escapeHtml(entry.phr)} · 🚛 ${escapeHtml(entry.transporte || "(sin transportista)")}`
+      : escapeHtml(entry.phr);
+    const comps = entry.occ.map(o => escapeHtml(String(o.numero))).filter((v, i, a) => a.indexOf(v) === i);
+    const dentroMismo = entry.occ.length > 1 && new Set(entry.occ.map(o => o.compId)).size === 1;
+    const badge = dentroMismo
+      ? `<span class="badge-err">Mismo comprobante</span>`
+      : `<span class="badge-err">Varios comprobantes</span>`;
+    const filas = entry.occ.map((o, n) => `
+      <tr>
+        <td style="font-weight:700;color:var(--naranja)">${n + 1}</td>
+        <td><strong class="nro-caja">${escapeHtml(o.numero)}</strong></td>
+        <td>${fmtFecha(o.fecha)}</td>
+        <td><span class="estado-badge ${o.estado === "Autorizado" ? "estado-autorizado" : "estado-pendiente"}">${escapeHtml(o.estado || "—")}</span></td>
+        <td>🚛 ${escapeHtml(o.transporte || "—")}</td>
+        <td>${escapeHtml(o.origen || "—")} → ${escapeHtml(o.destino || "—")}</td>
+        <td class="num">${fmtMoneda(o.importe)}</td>
+        <td style="text-align:center">${fmtFecha(o.fechaPHR)}</td>
+        <td><button type="button" class="btn-sm" data-dup-edit="${escapeHtml(o.compId)}"><i class="fas fa-edit"></i> Editar</button></td>
+      </tr>`).join("");
+    return `<div class="detalle-item" style="margin-top:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:800;font-size:.95rem">📋 ${titulo} <span style="color:var(--muted);font-weight:600;font-size:.8rem">× ${entry.occ.length}</span></div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${badge}<span style="font-size:.72rem;color:var(--muted)">Comp: ${comps.join(", ")}</span></div>
+      </div>
+      <div class="table-wrapper" style="border-radius:12px">
+        <table class="listado" style="min-width:720px;font-size:.78rem">
+          <thead><tr><th>#</th><th>N° Comp.</th><th>Fecha</th><th>Estado</th><th>Transportista</th><th>Origen → Destino</th><th>Importe</th><th>Fecha PHR</th><th>Acción</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+  resDiv.querySelectorAll("[data-dup-edit]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-dup-edit");
+      const comp = comprobantes.find(c => c.id === id);
+      if (!comp) return toast("Comprobante no encontrado", "error");
+      editarComprobante(comp.id);
+      setTimeout(() => document.getElementById("carga")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      toast("Comprobante cargado para editar", "info");
+    };
+  });
+}
+function detectarDuplicadosEnFormulario() {
+  const enForm = [];
+  const seen = new Map();
+  itemsTemp.forEach((it, idx) => {
+    const phr = normalizarPhrKey(it.phr);
+    if (!phr) return;
+    const key = `${phr}||${normalizarTransporteKey(it.transporte)}`;
+    if (seen.has(key)) enForm.push({ phr: it.phr, transporte: it.transporte, idxA: seen.get(key), idxB: idx });
+    else seen.set(key, idx);
+  });
+  const externos = [];
+  itemsTemp.forEach((it, idx) => {
+    const phr = normalizarPhrKey(it.phr);
+    if (!phr) return;
+    const transp = normalizarTransporteKey(it.transporte);
+    (comprobantes || []).forEach(c => {
+      if (comprobanteEditandoId && c.id === comprobanteEditandoId) return;
+      (c.items || []).forEach(oi => {
+        if (normalizarPhrKey(oi.phr) === phr && normalizarTransporteKey(oi.transporte) === transp) {
+          externos.push({ phr: it.phr, transporte: it.transporte || "", idxForm: idx, numero: c.numero, compId: c.id, fecha: c.fecha });
+        }
+      });
+    });
+  });
+  return { enForm, externos };
+}
+function advertirDuplicadosAntesDeGuardar() {
+  const { enForm, externos } = detectarDuplicadosEnFormulario();
+  if (enForm.length) {
+    return { bloquea: true, mensaje: `PHR duplicados en este comprobante: ${enForm.map(d => d.phr || "(vacío)").join(", ")}` };
+  }
+  if (externos.length) {
+    const unicos = [...new Map(externos.map(e => [`${e.phr}|${e.numero}`, e])).values()];
+    const lista = unicos.slice(0, 6).map(e => `· ${e.phr} ya está en N° ${e.numero} (${fmtFecha(e.fecha)})`).join("<br>");
+    const mas = unicos.length > 6 ? `<br>… y ${unicos.length - 6} más` : "";
+    return { bloquea: false, advertencia: true, mensaje: `Hay PHR que ya existen en otros comprobantes:<br>${lista}${mas}<br><br>¿Guardar de todos modos?` };
+  }
+  return { bloquea: false, advertencia: false };
+}
+
 document.getElementById("btnBuscarPhr").onclick = () => {
   const phr = document.getElementById("buscarPhrInput").value.trim().toLowerCase();
   const resDiv = document.getElementById("resultadoBusquedaPhr");
@@ -5626,6 +5874,14 @@ document.getElementById("btnBuscarPhr").onclick = () => {
         🚛 ${escapeHtml(r.item.transporte)} · ${escapeHtml(r.item.origen)} → ${escapeHtml(r.item.destino)} · ${fmtMoneda(r.item.importePHR)}</div>`).join("")
     : `<div class="empty-state" style="padding:20px">❌ No encontrado</div>`;
 };
+
+document.getElementById("btnAnalizarDuplicadosPhr")?.addEventListener("click", () => {
+  renderDuplicadosPhr();
+  toast("Análisis de duplicados listo", "info");
+});
+document.getElementById("dupSoloMismoTransporte")?.addEventListener("change", () => {
+  if (document.getElementById("resultadoDuplicadosPhr")?.innerHTML) renderDuplicadosPhr();
+});
 document.getElementById("btnLimpiarFiltros").onclick = () => {
   ["buscadorGlobal","filtroDesde","filtroHasta","filtroTransportista"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("filtroEstado").value = "todos";

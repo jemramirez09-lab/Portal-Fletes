@@ -966,12 +966,13 @@ function cpApplyReadOnlyUI() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
   function normFactura(f) {
+    // Unifica variantes: "FC 3-403" | "FC-3-403" | "FC 3 403" | "fc3-403" → "FC3403"
     return String(f || '')
       .trim()
       .toUpperCase()
-      .replace(/\s+/g, ' ')
-      .replace(/\s*[-–—]\s*/g, '-')  // 1 - 145 → 1-145
-      .replace(/^0+(\d)/, '$1');     // ceros a la izquierda suaves en el inicio
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9]+/g, '')  // quita espacios, guiones, puntos, barras, etc.
+      .replace(/^0+/, '');         // ceros a la izquierda globales
   }
   function normProv(p) {
     return String(p || '')
@@ -989,18 +990,35 @@ function cpApplyReadOnlyUI() {
   }
   /** Comparación flexible entre dos facturas (cubre nro vacío en un lado) */
   function esMismoDocumento(a, b) {
-    if (normFactura(a.factura) !== normFactura(b.factura)) return false;
-    const na = normProv(a.nroProveedor).replace(/\.0$/, '');
-    const nb = normProv(b.nroProveedor).replace(/\.0$/, '');
+    const fa = normFactura(a.factura);
+    const fb = normFactura(b.factura);
+    if (!fa || !fb || fa !== fb) return false;
+    // Misma factura + mismo id de registro = la misma fila (no es "duplicado" entre sí)
+    if (a.id && b.id && a.id === b.id) return true; // para grupoDeFactura de una sola
+
+    const na = normProv(a.nroProveedor).replace(/\.0$/, '').replace(/[^0-9A-Z]/g, '');
+    const nb = normProv(b.nroProveedor).replace(/\.0$/, '').replace(/[^0-9A-Z]/g, '');
     const pa = normProv(a.proveedor);
     const pb = normProv(b.proveedor);
+
+    // 1) Ambos con Nº proveedor → deben coincidir
     if (na && nb) return na === nb;
+    // 2) Ambos con nombre → deben coincidir
     if (pa && pb && pa === pb) return true;
+    // 3) Nombre contiene el Nº (o viceversa)
     if (na && pb && (pb.includes(na) || na === pb)) return true;
     if (nb && pa && (pa.includes(nb) || nb === pa)) return true;
-    // Si ambos sin datos de proveedor, solo factura igual no basta
+    // 4) Un lado con Nº y el otro con nombre: si el nombre es el mismo proveedor del grupo, aceptar
+    //    cuando al menos un identificador de proveedor está presente en cada lado
+    if ((na || pa) && (nb || pb)) {
+      // Si solo uno tiene nº y el otro solo nombre, no podemos descartar: en importaciones
+      // frecuentes el nº falta en un corte. Coincidencia de factura + algún dato de proveedor basta.
+      if (na && !nb && pb) return true;
+      if (nb && !na && pa) return true;
+      if (pa && pb) return pa === pb;
+    }
+    // 5) Sin ningún dato de proveedor en ambos: no forzar (evitar falsos positivos genéricos)
     if (!na && !nb && !pa && !pb) return false;
-    // Un lado solo nombre y otro solo nro: no forzar match
     return false;
   }
   function debounce(fn, ms) {
@@ -1445,10 +1463,10 @@ function cpApplyReadOnlyUI() {
   }
 
   function actualizarDuplicados() {
-    // Reset
+    // Reset flags de alerta (conserva estadoDup ok/no ya resueltos)
     facturas.forEach(f => { f._dupAlert = false; });
-    // Emparejar por comparación flexible (factura + proveedor nro/nombre)
-    // Compara cada factura con TODAS (todos los cortes)
+
+    // Pasada 1: emparejar con comparación flexible (factura + proveedor)
     for (let i = 0; i < facturas.length; i++) {
       for (let j = i + 1; j < facturas.length; j++) {
         if (esMismoDocumento(facturas[i], facturas[j])) {
@@ -1459,9 +1477,50 @@ function cpApplyReadOnlyUI() {
         }
       }
     }
-    // Limpiar estadoDup en no-duplicados
+
+    // Pasada 2 (red de seguridad): misma factura normalizada + mismo nº proveedor
+    // Cubre casos donde el nombre viene distinto entre cortes pero el Nº es igual.
+    const byFacNro = new Map();
     facturas.forEach(f => {
-      if (!f._dupAlert) f.estadoDup = undefined;
+      const fac = normFactura(f.factura);
+      const nro = normProv(f.nroProveedor).replace(/\.0$/, '').replace(/[^0-9A-Z]/g, '');
+      if (!fac || !nro) return;
+      const k = fac + '|' + nro;
+      if (!byFacNro.has(k)) byFacNro.set(k, []);
+      byFacNro.get(k).push(f);
+    });
+    byFacNro.forEach(arr => {
+      if (arr.length < 2) return;
+      arr.forEach(f => {
+        f._dupAlert = true;
+        if (!f.estadoDup) f.estadoDup = 'pendiente';
+      });
+    });
+
+    // Pasada 3: misma factura normalizada + mismo nombre de proveedor (sin nº)
+    const byFacNom = new Map();
+    facturas.forEach(f => {
+      const fac = normFactura(f.factura);
+      const nom = normProv(f.proveedor);
+      if (!fac || !nom) return;
+      const k = fac + '|' + nom;
+      if (!byFacNom.has(k)) byFacNom.set(k, []);
+      byFacNom.get(k).push(f);
+    });
+    byFacNom.forEach(arr => {
+      if (arr.length < 2) return;
+      arr.forEach(f => {
+        f._dupAlert = true;
+        if (!f.estadoDup) f.estadoDup = 'pendiente';
+      });
+    });
+
+    // Limpiar estadoDup solo en no-duplicados (si estaba pendiente/undefined)
+    facturas.forEach(f => {
+      if (!f._dupAlert) {
+        // Conservar 'ok'/'no' no tiene sentido sin alerta; limpiar
+        f.estadoDup = undefined;
+      }
     });
   }
 
@@ -2339,6 +2398,11 @@ function cpApplyReadOnlyUI() {
       montoNuevos += item.monto;
     }
     actualizarDuplicados();
+    const dupsImport = facturas.filter(f => f._dupAlert);
+    if (dupsImport.length) {
+      const nG = new Set(dupsImport.map(f => normFactura(f.factura) + '|' + (normProv(f.nroProveedor).replace(/\.0$/, '') || normProv(f.proveedor)))).size;
+      toast(`⚠️ Importación: ${dupsImport.length} factura(s) en ${nG} grupo(s) duplicado(s). Revisá "Resolver duplicados".`, true);
+    }
     if (nuevos > 0) {
       const marcar = await new Promise(resolve => {
         const ov = document.createElement('div');
@@ -3551,14 +3615,22 @@ function cpApplyReadOnlyUI() {
   }
 
   function controlDuplicidadGlobal() {
-    const grupos = {};
-    facturas.forEach(f => { const clave = claveDup(f); if (!grupos[clave]) grupos[clave] = []; grupos[clave].push(f); });
-    const duplicados = Object.values(grupos).filter(arr => arr.length > 1);
+    actualizarDuplicados();
+    const usados = new Set();
+    const duplicados = [];
+    facturas.forEach(f => {
+      if (usados.has(f.id) || !f._dupAlert) return;
+      const grupo = grupoDeFactura(f);
+      if (grupo.length < 2) return;
+      grupo.forEach(x => usados.add(x.id));
+      duplicados.push(grupo);
+    });
     if (!duplicados.length) return;
-    let msg = `<strong>${duplicados.length} grupos duplicados</strong> (Nº factura + proveedor):<br><br>`;
+    let msg = `<strong>${duplicados.length} grupos duplicados</strong> (Nº factura + proveedor, todos los cortes):<br><br>`;
     duplicados.forEach(arr => {
       const f = arr[0];
-      msg += `• <strong>${escapeHtml(f.factura)}</strong> - ${escapeHtml(f.proveedor || f.nroProveedor)} (${arr.length} copias)<br>`;
+      const cortes = [...new Set(arr.map(x => x.fechaCorte).filter(Boolean))].join(', ');
+      msg += `• <strong>${escapeHtml(f.factura)}</strong> - ${escapeHtml(f.proveedor || f.nroProveedor)} (${arr.length} copias · cortes: ${escapeHtml(cortes || '—')})<br>`;
     });
     const ov = document.createElement('div');
     ov.className = 'modal-overlay';
@@ -3727,6 +3799,9 @@ function cpApplyReadOnlyUI() {
   }
 
   function renderBuscarProv() {
+    // Siempre recalcular duplicados antes de mostrar (evita columna Dup en "—")
+    try { actualizarDuplicados(); } catch (e) { console.warn('dup buscarProv', e); }
+
     const q = (document.getElementById('inputBuscarProv') || {}).value || '';
     const campo = (document.getElementById('filtroBuscarProvCampo') || {}).value || 'ambos';
     const alcance = (document.getElementById('filtroBuscarProvAlcance') || {}).value || 'todos';
@@ -3791,8 +3866,15 @@ function cpApplyReadOnlyUI() {
         const badgeEst = est === 'VENCIDA'
           ? '<span class="badge badge-vencida">VENCIDA</span>'
           : '<span class="badge badge-novenc">NO VENCIDA</span>';
+        // Marca local: misma factura (norm) repetida dentro del mismo proveedor del resultado
+        const facKey = normFactura(f.factura);
+        const localDup = facKey && g.items.filter(x => normFactura(x.factura) === facKey).length > 1;
+        if (localDup && !f._dupAlert) {
+          f._dupAlert = true;
+          if (!f.estadoDup) f.estadoDup = 'pendiente';
+        }
         let dup = '—';
-        if (f._dupAlert) {
+        if (f._dupAlert || localDup) {
           const label = f.estadoDup === 'ok' ? 'Aceptar' : f.estadoDup === 'no' ? 'Rechazar' : 'Pendiente';
           dup = `<span class="badge-estado ${f.estadoDup === 'ok' ? 'badge-enviado' : f.estadoDup === 'no' ? 'badge-no-enviado' : 'badge-duplicado'}">${label}</span>`;
         }
@@ -3814,6 +3896,12 @@ function cpApplyReadOnlyUI() {
       html += `</tbody></table></div></div>`;
     });
     container.innerHTML = html;
+    // Advertencia si hay facturas duplicadas en el resultado
+    const dupsEnRes = (res.list || []).filter(f => f._dupAlert);
+    if (dupsEnRes.length) {
+      const nGrupos = new Set(dupsEnRes.map(f => normFactura(f.factura) + '|' + (normProv(f.nroProveedor) || normProv(f.proveedor)))).size;
+      toast(`⚠️ ${dupsEnRes.length} factura(s) con duplicado detectado (${nGrupos} grupo/s). Revisá la columna Dup.`, true);
+    }
   }
 
   function exportarBuscarProv() {

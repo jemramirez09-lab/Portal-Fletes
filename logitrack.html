@@ -2825,6 +2825,18 @@
                     </button>
                 </div>
             </div>
+            <div>
+                <label>Fecha RTO (aplicar a todos / vacíos)</label>
+                <div class="ca-pv-wrap">
+                    <input type="date" id="ca_fecha_global" title="Fecha a aplicar a los RTOs">
+                    <button type="button" onclick="aplicarFechaRtoATodos(false)" title="Aplicar a todas las filas">
+                        <i class="fas fa-arrow-down"></i> Todas
+                    </button>
+                    <button type="button" onclick="aplicarFechaRtoATodos(true)" title="Solo filas sin fecha">
+                        <i class="fas fa-fill"></i> Vacíos
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="ca-resumen-transp" id="ca_resumen_transp" aria-live="polite">
@@ -3945,10 +3957,11 @@
         hint.className = "tarifa-hint";
         hint.textContent = "Base: $ " + Math.round(tarifa).toLocaleString("es-AR");
         if (esInd && inputImp) {
-            // Nunca sobrescribir importes que vinieron del Excel / carga asistida
-            if (opts.preserve || inputImp.dataset.fromFile === "1") {
-                return tarifa;
+            // Nunca sobrescribir importes del Excel / carga asistida / bloqueados al editar
+            if (opts.preserve || inputImp.dataset.fromFile === "1" || inputImp.dataset.importeBloqueado === "1") {
+                return tarifa; // solo muestra hint "Base: $…", no toca el valor
             }
+            // force=true (botón Aplicar tarifas) SÍ puede pisar, salvo fromFile/bloqueado arriba
             const cur = parseFloat(inputImp.value);
             const vacio = !inputImp.value || isNaN(cur) || cur === 0;
             if (opts.force || vacio || inputImp.dataset.autoTarifa === "1") {
@@ -5046,7 +5059,28 @@
         document.getElementById("tbodyRemitos").innerHTML = "";
         remitos.forEach(r => {
             const impFila = unico ? 0 : (Number(r.importe) || 0);
-            agregarFilaRemito(r.numero, r.proveedor, r.tipoServicio, r.origen, r.destino, impFila, r.adicional, r.concepto, r.fecha_rto, r.punto_venta || "");
+            agregarFilaRemito(r.numero, r.proveedor, r.tipoServicio, r.origen, r.destino, impFila, r.adicional, r.concepto, r.fecha_rto || "", r.punto_venta || "");
+        });
+        // Proteger importes ya guardados: el tarifario no debe modificarlos al editar
+        document.querySelectorAll("#tbodyRemitos tr").forEach((tr, idx) => {
+            const imp = tr.querySelector(".rto_importe");
+            if (imp) {
+                imp.dataset.fromFile = "1";
+                imp.dataset.importeBloqueado = "1";
+                delete imp.dataset.autoTarifa;
+                if (!unico && remitos[idx]) {
+                    imp.value = Number(remitos[idx].importe) || 0;
+                }
+            }
+            const ad = tr.querySelector(".rto_adicional");
+            if (ad && remitos[idx]) {
+                ad.value = Number(remitos[idx].adicional) || 0;
+                ad.dataset.fromFile = "1";
+            }
+            const fe = tr.querySelector(".rto_fecha");
+            if (fe && remitos[idx] && remitos[idx].fecha_rto) {
+                fe.value = remitos[idx].fecha_rto;
+            }
         });
         ajustarColumnasPorTipoFlete();
         if (!unico) actualizarSumaIndividual();
@@ -5059,8 +5093,15 @@
         document.getElementById("btnGuardarAutorizacion").innerText = "✏️ Actualizar autorización";
         document.getElementById("btnCancelarEdicion").style.display = "block";
         asignarValidadoresARemitos();
+        // Mostrar bases del tarifario sin pisar importes
+        setTimeout(() => {
+            document.querySelectorAll("#tbodyRemitos tr").forEach(row => {
+                try { aplicarTarifaEnFila(row, { force: false, preserve: true }); } catch (e) {}
+            });
+            actualizarResumenCarga();
+        }, 50);
         actualizarInfoSiguienteNumero();
-        mostrarToast(`Editando autorización ${auth}`);
+        mostrarToast(`Editando autorización ${auth} · importes protegidos`);
     }
     
     function cancelarEdicion() { limpiarFormulario(); mostrarToast("Edición cancelada"); }
@@ -6250,6 +6291,12 @@
                             tipoServicio = "local";
                         }
 
+                        const fechaRaw = String(pick(row, ALIAS.fecha) ?? "").trim();
+                        let fechaNorm = "";
+                        if (fechaRaw) {
+                            try { fechaNorm = (typeof normalizarFecha === "function" ? normalizarFecha(fechaRaw) : "") || ""; }
+                            catch (e) { fechaNorm = ""; }
+                        }
                         filas.push({
                             _id: "ca_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
                             numero: num,
@@ -6257,13 +6304,14 @@
                             punto_venta: puntoVenta,
                             origen: origen || (tipoServicio === "local" ? "TUCUMAN" : ""),
                             destino: destino,
-                            fecha_rto: "",
+                            fecha_rto: fechaNorm,
                             importe: normalizarNumero(importeRaw),
                             adicional: normalizarNumero(adicionalRaw),
                             concepto: concepto,
                             tipoServicio: tipoServicio,
                             _transportistaFila: transp,
-                            _fechaOriginal: String(pick(row, ALIAS.fecha) ?? "").trim()
+                            _fechaOriginal: fechaRaw,
+                            _importeDesdeArchivo: true
                         });
                     }
 
@@ -6571,6 +6619,26 @@
             mostrarToast(`✅ Punto de venta "${val}" aplicado a ${this.datos.length} filas`);
         },
 
+        /** Aplica fecha RTO a todas las filas, o solo a las que están vacías (soloVacios=true). */
+        aplicarFechaRtoATodos(soloVacios) {
+            const val = (document.getElementById("ca_fecha_global")?.value || "").trim();
+            if (!val) {
+                mostrarToast("Elegí una fecha RTO primero", true);
+                return;
+            }
+            let n = 0;
+            this.datos.forEach(r => {
+                const actual = String(r.fecha_rto || "").trim();
+                if (soloVacios && actual) return;
+                r.fecha_rto = val;
+                r._fechaOriginal = val;
+                n++;
+            });
+            this.renderTabla();
+            if (!n) mostrarToast(soloVacios ? "Todas las filas ya tienen fecha" : "Sin filas para aplicar", true);
+            else mostrarToast(`✅ Fecha ${val} aplicada a ${n} RTO(s)` + (soloVacios ? " (solo vacíos)" : ""));
+        },
+
         // ---------- Volcar al formulario ----------
         volcarAlFormulario() {
             if (typeof ltAuthRequireWrite === "function" && !ltAuthRequireWrite("cargar RTOs desde Excel")) return;
@@ -6759,6 +6827,15 @@
                     if (typeof ajustarColumnasPorTipoFlete === "function") ajustarColumnasPorTipoFlete();
                 }
                 this.datos.forEach(r => {
+                    let fechaRto = String(r.fecha_rto || "").trim();
+                    if (!fechaRto && r._fechaOriginal) {
+                        try { fechaRto = normalizarFecha(r._fechaOriginal) || ""; } catch (e) { fechaRto = ""; }
+                    }
+                    if (!fechaRto) {
+                        fechaRto = (document.getElementById("manu_fecha_flete")?.value)
+                            || (typeof fechaHoyISO === "function" ? fechaHoyISO() : new Date().toISOString().slice(0, 10));
+                    }
+                    r.fecha_rto = fechaRto;
                     agregarFilaRemito(
                         r.numero || "",
                         r.proveedor || "",
@@ -6768,28 +6845,32 @@
                         r.importe || 0,
                         r.adicional || 0,
                         r.concepto || "",
-                        r.fecha_rto || "",
+                        fechaRto,
                         r.punto_venta || ""
                     );
                 });
-                // Marcar importes del archivo para que no los pise el tarifario
+                // Marcar importes del archivo para que NUNCA los pise el tarifario (ni al editar después)
                 document.querySelectorAll("#tbodyRemitos tr").forEach((tr, idx) => {
                     const imp = tr.querySelector(".rto_importe");
                     if (!imp) return;
                     const fromFile = Number(this.datos[idx]?.importe) || 0;
-                    if (fromFile > 0 || (this.datos[idx] && Object.prototype.hasOwnProperty.call(this.datos[idx], "importe"))) {
-                        imp.value = fromFile;
-                        imp.dataset.fromFile = "1";
-                        delete imp.dataset.autoTarifa;
-                    }
+                    imp.value = fromFile;
+                    imp.dataset.fromFile = "1";
+                    imp.dataset.importeBloqueado = "1";
+                    delete imp.dataset.autoTarifa;
                     const ad = tr.querySelector(".rto_adicional");
                     if (ad && this.datos[idx]) {
                         ad.value = Number(this.datos[idx].adicional) || 0;
+                        ad.dataset.fromFile = "1";
+                    }
+                    const fe = tr.querySelector(".rto_fecha");
+                    if (fe && this.datos[idx]?.fecha_rto) {
+                        fe.value = this.datos[idx].fecha_rto;
                     }
                 });
                 asignarValidadoresARemitos();
                 setTimeout(() => {
-                    // Solo mostrar base del tarifario; NO sobrescribir importes del Excel
+                    // Solo mostrar base del tarifario; NO sobrescribir importes del Excel/carga asistida
                     document.querySelectorAll("#tbodyRemitos tr").forEach(row => {
                         aplicarTarifaEnFila(row, { force: false, preserve: true });
                     });
@@ -7058,6 +7139,7 @@
     window.ca_agregarFila = () => CargaAsistida.agregarFilaVacia();
     window.ca_limpiarTodo = () => CargaAsistida.limpiarTodo();
     window.aplicarPuntoVentaATodos = () => CargaAsistida.aplicarPuntoVentaATodos();
+    window.aplicarFechaRtoATodos = (soloVacios) => CargaAsistida.aplicarFechaRtoATodos(!!soloVacios);
     window.volcarAlFormulario = () => CargaAsistida.volcarAlFormulario();
     window.descargarPlantillaRTOS = () => CargaAsistida.descargarPlantilla();
     window.exportarRTOSCargados = () => CargaAsistida.exportarCargados();
